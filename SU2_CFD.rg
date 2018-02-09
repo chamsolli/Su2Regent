@@ -247,8 +247,7 @@ where
 	reads writes(MSpace.v, Dr.v, Ds.v, Drw.v, Dsw.v, LIFT.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, lFirst.v, wTimeInt.v, DOFToIntTime.v, AderIterMat.v, vmapM.v)
 do
 	if isFile(fileName) then
-		c.printf("--------------Read Std.Elem File------------\n")
-		var tsStart = c.legion_get_current_time_in_micros()
+		c.printf("--------------Read Std.Elem File------------\n\n")
 		var f = c.fopen(fileName,"r")
 		var val : double[1]
 
@@ -357,21 +356,19 @@ do
 				vmapM[e].v = jj
 			end
 		end
-		var tsStop = c.legion_get_current_time_in_micros()
-		c.printf("Reading standard element took %.4f sec\n\n", (tsStop-tsStart) * 1e-6)
 	else
 		c.printf("File '%s' doesn't exists! Abort the program.\n",fileName)
 		c.abort()
 	end
 end
 
-task readVertex(meshFileName : &int8, gridVertex : region(ispace(int1d),GridVertex), token : int)
+task readVertex(meshFileName : &int8, gridVertex : region(ispace(int1d),GridVertex))
 where
 	reads writes(gridVertex)
 do
 	var limits = gridVertex.bounds
-	var lowerBound  : int = [int](limits.lo)
-	var upperBound  : int = [int](limits.hi)
+	var lowerBound  : uint64 = [uint64](limits.lo)
+	var upperBound  : uint64 = [uint64](limits.hi)
 	var coord       : double[2]
 
 	var f = c.fopen(meshFileName,"r")
@@ -389,16 +386,15 @@ do
 		gridVertex[ii].VY = coord[1]
 	end
 	c.fclose(f)
-	return 1
 end
 
-task readElemToVertex(meshFileName : &int8, gridNv : uint64, gridEToV : region(ispace(int1d),GridEToV), token : int)
+task readElemToVertex(meshFileName : &int8, gridNv : uint64, gridEToV : region(ispace(int1d),GridEToV))
 where
 	reads writes(gridEToV)
 do
 	var limits = gridEToV.bounds
-	var lowerBound  : int = [int](limits.lo)
-	var upperBound  : int = [int](limits.hi)
+	var lowerBound  : uint64 = [uint64](limits.lo)
+	var upperBound  : uint64 = [uint64](limits.hi)
 	var coord       : double[2]
 	var EToVVal     : uint64[3]
 
@@ -423,35 +419,37 @@ do
 		gridEToV[ii].v[2] = EToVVal[2]-1
 	end
 	c.fclose(f)
-	return 1
 end
 
 terra readData(f : &c.FILE, EVal : &uint64)
 	return c.fscanf(f, "%llu %llu %llu\n", &EVal[0],&EVal[1],&EVal[2]) == 3
 end
 
-task generateQPConnectivity(EToEFileName : &int8, EToFFileName : &int8, Nfp : uint64, q : region(ispace(ptr),Elem), lineCnt : uint64)
+task generateQPConnectivity(EToEFileName : &int8, EToFFileName : &int8, Nfp : uint64, q : region(ispace(ptr),Elem)) 
 where
 	reads writes(q.cellInd, q.QPInfo, q.adjQP, q.e1, q.e2, q.e3) 
 do
-	var numLine : uint64
 	var EToEVal : uint64[3]
 	var	EToFVal : uint64[3]
 	var dummyVal: uint64
 	var faceBase: int32
 	var faceGrad: int32
+	var lowerBound  : uint64
 
-	numLine = lineCnt
+	for e in q do
+		lowerBound = [uint64](e)
+		break
+	end
 
 	var ff = c.fopen(EToEFileName,"r")
 	var gg = c.fopen(EToFFileName,"r")
-	for ii=0,lineCnt do
+	for ii=0,lowerBound do
 		regentlib.assert(readData(ff,EToEVal), "Error in generateQPConnectivity task. Check EToE data or number of elements value.")
 		regentlib.assert(readData(gg,EToFVal), "Error in generateQPConnectivity task. Check EToF data or number of elements value.")
 	end
 
 	for e in q do
-		e.cellInd = numLine
+		e.cellInd = lowerBound
 		e.adjQP[0] = true
 		e.adjQP[1] = true
 		e.adjQP[2] = true
@@ -500,74 +498,73 @@ do
 				end
 			end
 		end
-		numLine = numLine + 1
+		lowerBound = lowerBound + 1
 	end
 	c.fclose(ff)
 	c.fclose(gg)
-
-	return numLine
 end
 
 terra readColor(f : &c.FILE, colorInfo : &uint64)
 	return c.fscanf(f,"%llu %llu\n",&colorInfo[0],&colorInfo[1]) == 2
 end
 
-task colorElem(colorVal : int8, partFileName : &int8, parallelism : uint64, q : region(ispace(ptr),Elem), lineCnt : uint64)
+task colorElem(partFileName : &int8, parallelism : uint64, q : region(ispace(ptr),Elem))
 where
 	reads writes(q.cellColor)
 do
-    var numLine : uint64
 	var colorInfo : uint64[2]
-    numLine = lineCnt
+	var lowerBound  : uint64
+	for e in q do
+		lowerBound = [uint64](e)
+		break
+	end
 
 	if ( parallelism == 1 ) then
 		for e in q do
 			e.cellColor = 0
 		end
-		c.printf("There's no parallelism. Nothing to read. Done.\n\n")
 	else
-		if ( colorVal == 0 ) then
-			c.printf("Read preconfigured partitioning info.\n\n")
-		end
 		var f = c.fopen(partFileName,"r")
-		for ii=0,lineCnt do
+		for ii=0,lowerBound do
 			regentlib.assert(readColor(f,colorInfo),"Error in partitioning info. Check partitioning data file.")
 		end
 		for e in q do
 			regentlib.assert(readColor(f,colorInfo),"Error in partitioning info. Check partitioning data file.")
 			e.cellColor = [int1d](colorInfo[1])
-			numLine = numLine + 1
 		end
 		c.fclose(f)
 	end
-	return numLine
 end
 
-task colorFaces(Nfp : uint64, q : region(ispace(ptr), Elem), QMFace : region(ispace(ptr), Surface), QPFace : region(ispace(ptr), Surface), lineCnt : uint64)
+task colorFaces(Nfp : uint64, q : region(ispace(ptr), Elem), QMFace : region(ispace(ptr), Surface), QPFace : region(ispace(ptr), Surface)) 
 where
 	reads(q.cellColor, q.adjQP, q.QPInfo, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor),
 	writes(q.adjQP, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor)
 do
-    var numLine : uint64
-    numLine = lineCnt
 	var cellInd		: uint64
 	var colorVal	: uint64
-	var cnt			: uint64
+	var lowerBound  : uint64
+
+	for e in q do
+		lowerBound = [uint64](e)
+		break
+	end
+
 	for e in q do
 		colorVal = e.cellColor
-		QMFace[numLine].faceColor= colorVal
-		QMFace[numLine].faceInd	= numLine 
-		QPFace[numLine].faceColor= colorVal
-		QPFace[numLine].faceInd	= numLine
+		QMFace[lowerBound].faceColor= colorVal
+		QMFace[lowerBound].faceInd	= lowerBound
+		QPFace[lowerBound].faceColor= colorVal
+		QPFace[lowerBound].faceInd	= lowerBound
 		for jj=0,3 do
 			cellInd = e.QPInfo[3][jj*Nfp]
-			if not ( colorVal == [uint64](q[cellInd].cellColor) ) then	-- Adjacent cell is not in the same partition
+			if not ( colorVal == [uint64](q[cellInd].cellColor) ) then
+				-- Adjacent cell is not in the same partition
 				e.adjQP[jj] = false
 			end
 		end
-		numLine = numLine + 1
+		lowerBound = lowerBound + 1
 	end
-	return numLine
 end
 
 task buildNodes(p_space : int8, gridVertex : region(ispace(int1d),GridVertex), gridEToV : region(ispace(int1d),GridEToV), q : region(ispace(ptr), Elem))
@@ -1920,6 +1917,7 @@ task toplevel()
 	var LInfError			: double = 0.0
 	var token				: uint64 = 0
 
+
 	-- 2) Get *.config input and assign values
 	var config : su2Config
 	config:initializeFromCommand()
@@ -1934,6 +1932,7 @@ task toplevel()
 	gridNv		= gridNvG
 	var partFileNameLocal : rawstring = cstring.strcat(partFileName,config.partFileTail)
 	var colors		= ispace(int1d, config.parallelism)
+
 
 	-- 3) Read standard element info based on p_space
 	var MSpace		= region(ispace(int1d,nDOFs*nDOFs), doubleVal)
@@ -1951,7 +1950,6 @@ task toplevel()
 	var DOFToIntTime= region(ispace(int1d,2*2), doubleVal)
 	var AderIterMat	= region(ispace(int1d,(nDOFs*Nt)*(nDOFs*Nt)), doubleVal)
 	var vmapM		= region(ispace(int1d,3*Nfp), uintVal)
-
 	readStdElemInfo(stdElemFileName, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, lFirst, wTimeInt, DOFToIntTime, AderIterMat, vmapM)
 
 	-- Create aliased partitions of regions for standard element
@@ -1999,28 +1997,30 @@ task toplevel()
 	c.legion_domain_point_coloring_destroy(coloring7)
 	c.legion_domain_point_coloring_destroy(coloring8)
 
+
+
+
 	-- 4) Read mesh
 	var	gridVertex		= region(ispace(int1d,gridNv), GridVertex)
 	var gridEToV		= region(ispace(int1d,gridK), GridEToV)
 	var gridVertexPart	= partition(equal,gridVertex,colors)
 	var gridEToVPart	= partition(equal,gridEToV,colors)
 
-	var x : int = 0
     -- Read vertices info
 	for color in colors do
-		if ( [int8](color) == 0 ) then
+		if ( [uint32](color) == 0 ) then
 			c.printf("--------------Read Vertices Info------------\n\n")
 		end
-		x += readVertex(meshFileName,gridVertexPart[color],x)
+		readVertex(meshFileName,gridVertexPart[color])
 	end
-
 	-- Read EToV info
 	for color in colors do
-		if ( [int8](color) == 0 ) then
+		if ( [uint32](color) == 0 ) then
 			c.printf("----------Read Elem To Vertex Info----------\n\n")
 		end
-		x += readElemToVertex(meshFileName,gridNv,gridEToVPart[color],x)
+		readElemToVertex(meshFileName,gridNv,gridEToVPart[color])
 	end
+
 
 	-- 5) Declare regions
 	var q			= region(ispace(ptr,gridK), Elem)
@@ -2031,28 +2031,28 @@ task toplevel()
 	var QMFaceEqual	= partition(equal,QMFace,colors)
 	var QPFaceEqual	= partition(equal,QPFace,colors)
 
+
 	-- 6) Read connectivity info and graph partition info
-	var xx : uint64 = 0
 	for color in colors do
-		if ( [int8](color) == 0 ) then
+		if ( [uint32](color) == 0 ) then
 			c.printf("---------Generate Connectiviy Info----------\n\n")
 		end
-		xx = generateQPConnectivity(EToEFileName, EToFFileName, Nfp, qEqual[color], xx)
+		generateQPConnectivity(EToEFileName, EToFFileName, Nfp, qEqual[color])
 	end
-	xx = 0
 	for color in colors do
-		if ( [int8](color) == 0 ) then
-			c.printf("---------------Color Elements---------------\n")
+		if ( [uint32](color) == 0 ) then
+			c.printf("---------------Color Elements---------------\n\n")
 		end
-		xx = colorElem([int8](color),partFileNameLocal, config.parallelism, qEqual[color], xx)
+		colorElem(partFileNameLocal, config.parallelism, qEqual[color])
 	end
-	xx = 0
 	for color in colors do
-		if ( [int8](color) == 0 ) then
+		if ( [uint32](color) == 0 ) then
 			c.printf("-----------------Color Faces----------------\n\n")
 		end
-		xx = colorFaces(Nfp, qEqual[color], QMFaceEqual[color], QPFaceEqual[color],xx)
+		colorFaces(Nfp, qEqual[color], QMFaceEqual[color], QPFaceEqual[color])
 	end
+	__fence(__execution, __block)
+
 
 	-- 7) Final partitioning based on cellColor and faceColor value
 	var qPart		= partition(q.cellColor, colors)
@@ -2062,6 +2062,7 @@ task toplevel()
 	var qPartHalo	= ( qParte1 | qParte2 | qParte3 ) - qPart
 	var QMFacePart	= partition(QMFace.faceColor, colors)
 	var QPFacePart	= partition(QPFace.faceColor, colors)
+
 
 	-- 8) Preprocessing and initialize the solution
 	for color in colors do
@@ -2082,8 +2083,7 @@ task toplevel()
 		end
 		solutionAtTimeT(0.0,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,config.p0Val,qPart[color])
 	end
-
---	__fence(__execution, __block)
+	__fence(__execution, __block)
 
 	var ts_start = c.legion_get_current_time_in_micros()
 	c.printf("------------Run main simulation-------------\n")
@@ -2137,11 +2137,11 @@ task toplevel()
 		-- Marching one time step
 		simTime += dt
 	end
-
---	__fence(__execution, __block)
+	__fence(__execution, __block)
 	var ts_stop = c.legion_get_current_time_in_micros()
 	c.printf("simTime = %9.4lf\n",simTime)
 	c.printf("\nEuler2D simultation completed in %.4f sec\n\n",(ts_stop - ts_start) * 1e-6)
+
 
 	--10) Calculate error
     for color in colors do
