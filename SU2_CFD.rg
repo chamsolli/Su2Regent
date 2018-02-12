@@ -1931,7 +1931,7 @@ task toplevel()
 	nTimeInt	= nTimeIntG
 	gridK		= gridKG
 	gridNv		= gridNvG
-	cstring.strcat(partFileNameLocal,partFileName)
+	cstring.strcpy(partFileNameLocal,partFileName)
 	cstring.strcat(partFileNameLocal,config.partFileTail)
 	var colors		= ispace(int1d, config.parallelism)
 
