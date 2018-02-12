@@ -1916,6 +1916,7 @@ task toplevel()
 	var L2Error				: double = 0.0
 	var LInfError			: double = 0.0
 	var token				: uint64 = 0
+	var partFileNameLocal	: int8[64]
 
 
 	-- 2) Get *.config input and assign values
@@ -1930,7 +1931,8 @@ task toplevel()
 	nTimeInt	= nTimeIntG
 	gridK		= gridKG
 	gridNv		= gridNvG
-	var partFileNameLocal : rawstring = cstring.strcat(partFileName,config.partFileTail)
+	cstring.strcat(partFileNameLocal,partFileName)
+	cstring.strcat(partFileNameLocal,config.partFileTail)
 	var colors		= ispace(int1d, config.parallelism)
 
 
@@ -1996,8 +1998,6 @@ task toplevel()
 	c.legion_domain_point_coloring_destroy(coloring6)
 	c.legion_domain_point_coloring_destroy(coloring7)
 	c.legion_domain_point_coloring_destroy(coloring8)
-
-
 
 
 	-- 4) Read mesh
