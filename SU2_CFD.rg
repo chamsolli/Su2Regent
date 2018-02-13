@@ -1887,15 +1887,6 @@ do
 	return LInf
 end
 
-task block_task(q : region(ispace(ptr),Elem))
-where
-	reads writes(q)
-do
-	return 1
-end
-
-terra wait_for(x : int) return 1 end
-
 task toplevel()
 	-- 1) Declare several variables
     var nDOFs				: uint64
