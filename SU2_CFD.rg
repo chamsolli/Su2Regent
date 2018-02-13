@@ -163,12 +163,16 @@ fspace uintVal {
 }
 
 fspace GridVertex {
-	VX				: double;					-- X coordinate
-	VY				: double;					-- Y coordinate
+	id				: uint64,					-- Index of vertex
+	VX				: double,					-- X coordinate
+	VY				: double					-- Y coordinate
 }
 
-fspace GridEToV {
-	v				: uint64[3]					-- Index of vertex
+fspace GridEToV(r : region(GridVertex)) {
+	cellColor		: int1d,
+	v1				: ptr(GridVertex,r),
+	v2				: ptr(GridVertex,r),
+	v3				: ptr(GridVertex,r)
 }
 
 struct consVar {
@@ -362,15 +366,17 @@ do
 	end
 end
 
-task readVertex(meshFileName : &int8, gridVertex : region(ispace(int1d),GridVertex))
+task readVertex(meshFileName : &int8, gridVertex : region(ispace(ptr),GridVertex))
 where
 	reads writes(gridVertex)
 do
-	var limits = gridVertex.bounds
-	var lowerBound  : uint64 = [uint64](limits.lo)
-	var upperBound  : uint64 = [uint64](limits.hi)
 	var coord       : double[2]
+	var lowerBound  : uint64
 
+	for e in gridVertex do
+		lowerBound = [uint64](e)
+		break
+	end
 	var f = c.fopen(meshFileName,"r")
 	skipHeader(f)
 
@@ -380,23 +386,27 @@ do
 	end
 
 	-- Read coordinates
-	for ii=lowerBound,upperBound+1 do
+	for e in gridVertex do
 		regentlib.assert(readCoord(f,coord),"Error in readMesh task. Less coordinates data than it should be. Check grid file.")
-		gridVertex[ii].VX = coord[0]
-		gridVertex[ii].VY = coord[1]
+		e.id = [uint64](e)
+		e.VX = coord[0]
+		e.VY = coord[1]
 	end
 	c.fclose(f)
 end
 
-task readElemToVertex(meshFileName : &int8, gridNv : uint64, gridEToV : region(ispace(int1d),GridEToV))
+task readElemToVertex(meshFileName : &int8, gridNv : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)))
 where
 	reads writes(gridEToV)
 do
-	var limits = gridEToV.bounds
-	var lowerBound  : uint64 = [uint64](limits.lo)
-	var upperBound  : uint64 = [uint64](limits.hi)
 	var coord       : double[2]
 	var EToVVal     : uint64[3]
+	var lowerBound  : uint64
+
+	for e in gridEToV do
+		lowerBound = [uint64](e)
+		break
+	end
 
 	var f = c.fopen(meshFileName,"r")
 	skipHeader(f)
@@ -412,11 +422,14 @@ do
 	end
 
 	-- Read EToV info
-	for ii=lowerBound,upperBound+1 do
+	for e in gridEToV do
 		regentlib.assert(readEToV(f,EToVVal),"Error in readMesh task. Less EToV data than it should be. Check grid file.")
-		gridEToV[ii].v[0] = EToVVal[0]-1
-		gridEToV[ii].v[1] = EToVVal[1]-1
-		gridEToV[ii].v[2] = EToVVal[2]-1
+		var v1 = unsafe_cast(ptr(GridVertex, gridVertex), EToVVal[0]-1)
+		var v2 = unsafe_cast(ptr(GridVertex, gridVertex), EToVVal[1]-1)
+		var v3 = unsafe_cast(ptr(GridVertex, gridVertex), EToVVal[2]-1)
+		e.v1 = v1
+		e.v2 = v2
+		e.v3 = v3
 	end
 	c.fclose(f)
 end
@@ -508,9 +521,9 @@ terra readColor(f : &c.FILE, colorInfo : &uint64)
 	return c.fscanf(f,"%llu %llu\n",&colorInfo[0],&colorInfo[1]) == 2
 end
 
-task colorElem(partFileName : &int8, parallelism : uint64, q : region(ispace(ptr),Elem))
+task colorElem(partFileName : &int8, parallelism : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)), q : region(ispace(ptr),Elem))
 where
-	reads writes(q.cellColor)
+	reads writes(q.cellColor, gridEToV.cellColor)
 do
 	var colorInfo : uint64[2]
 	var lowerBound  : uint64
@@ -529,6 +542,16 @@ do
 			regentlib.assert(readColor(f,colorInfo),"Error in partitioning info. Check partitioning data file.")
 		end
 		for e in q do
+			regentlib.assert(readColor(f,colorInfo),"Error in partitioning info. Check partitioning data file.")
+			e.cellColor = [int1d](colorInfo[1])
+		end
+		c.fclose(f)
+
+		f = c.fopen(partFileName,"r")
+		for ii=0,lowerBound do
+			regentlib.assert(readColor(f,colorInfo),"Error in partitioning info. Check partitioning data file.")
+		end
+		for e in gridEToV do
 			regentlib.assert(readColor(f,colorInfo),"Error in partitioning info. Check partitioning data file.")
 			e.cellColor = [int1d](colorInfo[1])
 		end
@@ -567,9 +590,9 @@ do
 	end
 end
 
-task buildNodes(p_space : int8, gridVertex : region(ispace(int1d),GridVertex), gridEToV : region(ispace(int1d),GridEToV), q : region(ispace(ptr), Elem))
+task buildNodes(p_space : int8, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)), q : region(ispace(ptr), Elem))
 where
-	reads(q._x,q._y,q.cellInd,gridVertex.VX,gridVertex.VY,gridEToV.v),
+	reads(q._x,q._y,q.cellInd,gridVertex.VX,gridVertex.VY,gridEToV.v1,gridEToV.v2, gridEToV.v3),
 	writes(q._x,q._y)
 do
 	var dh			: double = 2.0/p_space
@@ -587,12 +610,12 @@ do
 			upBound = p_space - ii
 			for jj=0,upBound+1 do
 				rDum = -1.0 + jj*dh
-				q[cellNum]._x[cnt] = 0.5*(-(rDum+sDum)*gridVertex[gridEToV[cellNum].v[0]].VX
-									+ (1.0+rDum)*gridVertex[gridEToV[cellNum].v[1]].VX
-									+ (1.0+sDum)*gridVertex[gridEToV[cellNum].v[2]].VX )
-				q[cellNum]._y[cnt] = 0.5*(-(rDum+sDum)*gridVertex[gridEToV[cellNum].v[0]].VY
-									+ (1.0+rDum)*gridVertex[gridEToV[cellNum].v[1]].VY
-									+ (1.0+sDum)*gridVertex[gridEToV[cellNum].v[2]].VY )
+				q[cellNum]._x[cnt] = 0.5*(-(rDum+sDum)*gridVertex[gridEToV[cellNum].v1].VX
+									+ (1.0+rDum)*gridVertex[gridEToV[cellNum].v2].VX
+									+ (1.0+sDum)*gridVertex[gridEToV[cellNum].v3].VX )
+				q[cellNum]._y[cnt] = 0.5*(-(rDum+sDum)*gridVertex[gridEToV[cellNum].v1].VY
+									+ (1.0+rDum)*gridVertex[gridEToV[cellNum].v2].VY
+									+ (1.0+sDum)*gridVertex[gridEToV[cellNum].v3].VY )
 				cnt = cnt + 1
 			end
 		end
@@ -1992,24 +2015,25 @@ task toplevel()
 
 
 	-- 4) Read mesh
-	var	gridVertex		= region(ispace(int1d,gridNv), GridVertex)
-	var gridEToV		= region(ispace(int1d,gridK), GridEToV)
-	var gridVertexPart	= partition(equal,gridVertex,colors)
-	var gridEToVPart	= partition(equal,gridEToV,colors)
+	var	gridVertex		= region(ispace(ptr,gridNv), GridVertex)
+	var gridEToV		= region(ispace(ptr,gridK), GridEToV(wild))
+	var gridVertexEqual	= partition(equal,gridVertex,colors)
+	var gridEToVEqual	= partition(equal,gridEToV,colors)
 
     -- Read vertices info
 	for color in colors do
 		if ( [uint32](color) == 0 ) then
 			c.printf("--------------Read Vertices Info------------\n\n")
 		end
-		readVertex(meshFileName,gridVertexPart[color])
+		readVertex(meshFileName,gridVertexEqual[color])
 	end
+
 	-- Read EToV info
 	for color in colors do
 		if ( [uint32](color) == 0 ) then
 			c.printf("----------Read Elem To Vertex Info----------\n\n")
 		end
-		readElemToVertex(meshFileName,gridNv,gridEToVPart[color])
+		readElemToVertex(meshFileName,gridNv,gridVertex,gridEToVEqual[color])
 	end
 
 
@@ -2034,7 +2058,7 @@ task toplevel()
 		if ( [uint32](color) == 0 ) then
 			c.printf("---------------Color Elements---------------\n\n")
 		end
-		colorElem(partFileNameLocal, config.parallelism, qEqual[color])
+		colorElem(partFileNameLocal, config.parallelism, gridVertex, gridEToVEqual[color],qEqual[color])
 	end
 	for color in colors do
 		if ( [uint32](color) == 0 ) then
@@ -2054,14 +2078,20 @@ task toplevel()
 	var QMFacePart	= partition(QMFace.faceColor, colors)
 	var QPFacePart	= partition(QPFace.faceColor, colors)
 
+	var gridEToVPart	= partition(gridEToV.cellColor, colors)
+	var gridVertexPart1	= image(gridVertex, gridEToVPart, gridEToV.v1)
+	var gridVertexPart2	= image(gridVertex, gridEToVPart, gridEToV.v2)
+	var gridVertexPart3	= image(gridVertex, gridEToVPart, gridEToV.v3)
+	var gridVertexPart	= gridVertexPart1 | gridVertexPart2 | gridVertexPart3
 
 	-- 8) Preprocessing and initialize the solution
 	for color in colors do
 		if ( [int8](color) == 0 ) then
 			c.printf("----------Build Internal DOFs Info----------\n\n")
 		end
-		buildNodes(p_space,gridVertex,gridEToV,qPart[color])
+		buildNodes(p_space,gridVertexPart[color],gridEToVPart[color],qPart[color])
 	end
+
 	for color in colors do
 		if ( [int8](color) == 0 ) then
 			c.printf("---Calculate Jacobians And Normal Vectors---\n\n")
