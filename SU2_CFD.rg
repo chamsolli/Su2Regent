@@ -558,7 +558,7 @@ do
 		c.fclose(f)
 	end
 end
-
+--[[
 task colorFaces(Nfp : uint64, q : region(ispace(ptr), Elem), QMFace : region(ispace(ptr), Surface), QPFace : region(ispace(ptr), Surface)) 
 where
 	reads(q.cellColor, q.adjQP, q.QPInfo, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor),
@@ -578,6 +578,37 @@ do
 		QMFace[lowerBound].faceColor= colorVal
 		QMFace[lowerBound].faceInd	= lowerBound
 		QPFace[lowerBound].faceColor= colorVal
+		QPFace[lowerBound].faceInd	= lowerBound
+		for jj=0,3 do
+			cellInd = e.QPInfo[3][jj*Nfp]
+			if not ( colorVal == [uint64](q[cellInd].cellColor) ) then
+				-- Adjacent cell is not in the same partition
+				e.adjQP[jj] = false
+			end
+		end
+		lowerBound = lowerBound + 1
+	end
+end
+--]]
+task colorFaces(Nfp : uint64, q : region(ispace(ptr), Elem), qEqual : region(ispace(ptr), Elem), QMFace : region(ispace(ptr), Surface), QPFace : region(ispace(ptr), Surface))
+where
+	reads(q.cellColor, qEqual.cellColor, qEqual.adjQP, qEqual.QPInfo, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor),
+	writes(qEqual.adjQP, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor)
+do
+	var cellInd	: uint64
+	var colorVal	: uint64
+	var lowerBound	: uint64
+
+	for e in qEqual do
+		lowerBound = [uint64](e)
+		break
+	end
+
+	for e in qEqual do
+		colorVal = e.cellColor
+		QMFace[lowerBound].faceColor	= colorVal
+		QMFace[lowerBound].faceInd	= lowerBound
+		QPFace[lowerBound].faceColor	= colorVal
 		QPFace[lowerBound].faceInd	= lowerBound
 		for jj=0,3 do
 			cellInd = e.QPInfo[3][jj*Nfp]
@@ -2064,7 +2095,7 @@ task toplevel()
 		if ( [uint32](color) == 0 ) then
 			c.printf("-----------------Color Faces----------------\n\n")
 		end
-		colorFaces(Nfp, qEqual[color], QMFaceEqual[color], QPFaceEqual[color])
+		colorFaces(Nfp, q, qEqual[color], QMFaceEqual[color], QPFaceEqual[color])
 	end
 	__fence(__execution, __block)
 
@@ -2156,6 +2187,7 @@ task toplevel()
 		end
 
 		-- Marching one time step
+--		c.printf("simTime = %9.4lf\n",simTime)
 		simTime += dt
 	end
 	__fence(__execution, __block)
