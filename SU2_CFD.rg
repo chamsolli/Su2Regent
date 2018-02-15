@@ -118,8 +118,16 @@ elseif ( p_space == 4 ) then
 	nSpaceIntG = 36;	stdElemFileName = "standardElementInfo4.dat"
 elseif ( p_space == 5 ) then
 	nSpaceIntG = 54;	stdElemFileName = "standardElementInfo5.dat"
+elseif ( p_space == 6 ) then
+	nSpaceIntG = 73;	stdElemFileName = "standardElementInfo6.dat"
+elseif ( p_space == 7 ) then
+	nSpaceIntG = 93;	stdElemFileName = "standardElementInfo7.dat"
+elseif ( p_space == 8 ) then
+	nSpaceIntG = 118;	stdElemFileName = "standardElementInfo8.dat"
+elseif ( p_space == 9 ) then
+	nSpaceIntG = 145;	stdElemFileName = "standardElementInfo9.dat"
 else
-	print("Only supports p_space = 1, 2, 3, 4, 5.")
+	print("Only supports p_space = 1, 2, 3, 4, 5, 6, 7, 8, 9.")
 	print("Check p_space value in 'default.cfg' file.")
 	print("TREMINATE THE PROGRAM..")
 	os.exit()
@@ -152,6 +160,12 @@ elseif ( gridKG == 38428 ) then
 elseif ( gridKG == 163426 ) then
 	EToEFileName = "EToE257.dat" ; EToFFileName = "EToF257.dat";
 	partFileName = "grid257Part"
+elseif ( gridKG == 686300 ) then
+	EToEFileName = "EToE513.dat" ; EToFFileName = "EToF513.dat";
+	partFileName = "grid513Part"
+elseif ( gridKG == 2821764 ) then
+	EToEFileName = "EToE1025.dat" ; EToFFileName = "EToF1025.dat";
+	partFileName = "grid1025Part"
 end
 
 fspace doubleVal {
@@ -952,54 +966,54 @@ do
 	var rH				: double
 	var gamma			: double = 1.4
 	var w				: double
-	var fluxF1			: double[21]		-- Np, up to p=5
-	var fluxF2			: double[21]		-- Np
-	var fluxF3			: double[21]		-- Np
-	var fluxF4			: double[21]		-- Np
-	var fluxG1			: double[21]		-- Np
-	var fluxG2			: double[21]		-- Np
-	var fluxG3			: double[21]		-- Np
-	var fluxG4			: double[21]		-- Np
-	var gradFluxesIntFr1: double[54]		-- nSpaceInt, up to p=5
-	var gradFluxesIntFr2: double[54]		-- nSpaceInt
-	var gradFluxesIntFr3: double[54]		-- nSpaceInt
-	var gradFluxesIntFr4: double[54]		-- nSpaceInt
-	var gradFluxesIntFs1: double[54]		-- nSpaceInt
-	var gradFluxesIntFs2: double[54]		-- nSpaceInt
-	var gradFluxesIntFs3: double[54]		-- nSpaceInt
-	var gradFluxesIntFs4: double[54]		-- nSpaceInt
-	var gradFluxesIntGr1: double[54]		-- nSpaceInt
-	var gradFluxesIntGr2: double[54]		-- nSpaceInt
-	var gradFluxesIntGr3: double[54]		-- nSpaceInt
-	var gradFluxesIntGr4: double[54]		-- nSpaceInt
-	var gradFluxesIntGs1: double[54]		-- nSpaceInt
-	var gradFluxesIntGs2: double[54]		-- nSpaceInt
-	var gradFluxesIntGs3: double[54]		-- nSpaceInt
-	var gradFluxesIntGs4: double[54]		-- nSpaceInt
-	var resSolRho		: double[42]		-- (Np*Nt)
-	var resSolRhou		: double[42]		-- (Np*Nt)
-	var resSolRhov		: double[42]		-- (Np*Nt)
-	var resSolEner		: double[42]		-- (Np*Nt)
-	var oldSolRho		: double[42]		-- (Np*Nt)
-	var oldSolRhou		: double[42]		-- (Np*Nt)
-	var oldSolRhov		: double[42]		-- (Np*Nt)
-	var oldSolEner		: double[42]		-- (Np*Nt)
-	var intSolRho		: double[21]		-- Np
-	var intSolRhou		: double[21]		-- Np
-	var intSolRhov		: double[21]		-- Np
-	var intSolEner		: double[21]		-- Np
-	var resIntRho		: double[21]		-- Np
-	var resIntRhou		: double[21]		-- Np
-	var resIntRhov		: double[21]		-- Np
-	var resIntEner		: double[21]		-- Np
-	var resDumRho		: double[54]		-- nSpaceInt 
-	var resDumRhou		: double[54]		-- nSpaceInt 
-	var resDumRhov		: double[54]		-- nSpaceInt 
-	var resDumEner		: double[54]		-- nSpaceInt 
-	var resTotRho		: double[42]		-- (Np*Nt)
-	var resTotRhou		: double[42]		-- (Np*Nt)
-	var resTotRhov		: double[42]		-- (Np*Nt)
-	var resTotEner		: double[42]		-- (Np*Nt)
+	var fluxF1			: double[55]		-- Np, up to p=5
+	var fluxF2			: double[55]		-- Np
+	var fluxF3			: double[55]		-- Np
+	var fluxF4			: double[55]		-- Np
+	var fluxG1			: double[55]		-- Np
+	var fluxG2			: double[55]		-- Np
+	var fluxG3			: double[55]		-- Np
+	var fluxG4			: double[55]		-- Np
+	var gradFluxesIntFr1: double[145]		-- nSpaceInt, up to p=5
+	var gradFluxesIntFr2: double[145]		-- nSpaceInt
+	var gradFluxesIntFr3: double[145]		-- nSpaceInt
+	var gradFluxesIntFr4: double[145]		-- nSpaceInt
+	var gradFluxesIntFs1: double[145]		-- nSpaceInt
+	var gradFluxesIntFs2: double[145]		-- nSpaceInt
+	var gradFluxesIntFs3: double[145]		-- nSpaceInt
+	var gradFluxesIntFs4: double[145]		-- nSpaceInt
+	var gradFluxesIntGr1: double[145]		-- nSpaceInt
+	var gradFluxesIntGr2: double[145]		-- nSpaceInt
+	var gradFluxesIntGr3: double[145]		-- nSpaceInt
+	var gradFluxesIntGr4: double[145]		-- nSpaceInt
+	var gradFluxesIntGs1: double[145]		-- nSpaceInt
+	var gradFluxesIntGs2: double[145]		-- nSpaceInt
+	var gradFluxesIntGs3: double[145]		-- nSpaceInt
+	var gradFluxesIntGs4: double[145]		-- nSpaceInt
+	var resSolRho		: double[110]		-- (Np*Nt)
+	var resSolRhou		: double[110]		-- (Np*Nt)
+	var resSolRhov		: double[110]		-- (Np*Nt)
+	var resSolEner		: double[110]		-- (Np*Nt)
+	var oldSolRho		: double[110]		-- (Np*Nt)
+	var oldSolRhou		: double[110]		-- (Np*Nt)
+	var oldSolRhov		: double[110]		-- (Np*Nt)
+	var oldSolEner		: double[110]		-- (Np*Nt)
+	var intSolRho		: double[55]		-- Np
+	var intSolRhou		: double[55]		-- Np
+	var intSolRhov		: double[55]		-- Np
+	var intSolEner		: double[55]		-- Np
+	var resIntRho		: double[55]		-- Np
+	var resIntRhou		: double[55]		-- Np
+	var resIntRhov		: double[55]		-- Np
+	var resIntEner		: double[55]		-- Np
+	var resDumRho		: double[145]		-- nSpaceInt 
+	var resDumRhou		: double[145]		-- nSpaceInt 
+	var resDumRhov		: double[145]		-- nSpaceInt 
+	var resDumEner		: double[145]		-- nSpaceInt 
+	var resTotRho		: double[110]		-- (Np*Nt)
+	var resTotRhou		: double[110]		-- (Np*Nt)
+	var resTotRhov		: double[110]		-- (Np*Nt)
+	var resTotEner		: double[110]		-- (Np*Nt)
 	var isConverged		: bool = true
 	var NtNp			: uint64 = Nt*Np
 
@@ -1264,22 +1278,22 @@ do
 	var cellNum			: uint64
 	var cellNumTemp		: uint64
 	var indVal			: uint64	
-	var preSolRho		: double[42]		-- Np*Nt, up to p=5
-	var preSolRhou		: double[42]		-- Np*Nt
-	var preSolRhov		: double[42]		-- Np*Nt
-	var preSolEner		: double[42]		-- Np*Nt
-	var preSolRhoTemp	: double[42]		-- Np*Nt
-	var preSolRhouTemp	: double[42]		-- Np*Nt
-	var preSolRhovTemp	: double[42]		-- Np*Nt
-	var preSolEnerTemp	: double[42]		-- Np*Nt
-	var solIntRho		: double[21]		-- Np, up to p=5
-	var solIntRhou		: double[21]		-- Np
-	var solIntRhov		: double[21]		-- Np
-	var solIntEner		: double[21]		-- Np
-	var solIntRhoTemp	: double[21]		-- Np
-	var solIntRhouTemp	: double[21]		-- Np
-	var solIntRhovTemp	: double[21]		-- Np
-	var solIntEnerTemp	: double[21]		-- Np
+	var preSolRho		: double[110]		-- Np*Nt, up to p=5
+	var preSolRhou		: double[110]		-- Np*Nt
+	var preSolRhov		: double[110]		-- Np*Nt
+	var preSolEner		: double[110]		-- Np*Nt
+	var preSolRhoTemp	: double[110]		-- Np*Nt
+	var preSolRhouTemp	: double[110]		-- Np*Nt
+	var preSolRhovTemp	: double[110]		-- Np*Nt
+	var preSolEnerTemp	: double[110]		-- Np*Nt
+	var solIntRho		: double[55]		-- Np, up to p=5
+	var solIntRhou		: double[55]		-- Np
+	var solIntRhov		: double[55]		-- Np
+	var solIntEner		: double[55]		-- Np
+	var solIntRhoTemp	: double[55]		-- Np
+	var solIntRhouTemp	: double[55]		-- Np
+	var solIntRhovTemp	: double[55]		-- Np
+	var solIntEnerTemp	: double[55]		-- Np
 	var Nfp				: uint64 = p_space+1
 
 	for e in q do
@@ -1492,38 +1506,38 @@ task Euler2DLF(cellInd : uint64, p_space : int8, F1 : &double, F2 : &double, F3 
 	var maxVelTemp : double
 	var gamma	: double = 1.4
 	var Nfp		: uint64 = p_space+1 
-	var maxVel	: double[18]	-- Nfaces*Nfp, up to p=5
-	var rhoM	: double[18]	-- Nfaces*Nfp
-	var rhouM	: double[18]	-- Nfaces*Nfp
-	var rhovM	: double[18]	-- Nfaces*Nfp
-	var enerM	: double[18]	-- Nfaces*Nfp
-	var uM		: double[18]	-- Nfaces*Nfp
-	var vM		: double[18]	-- Nfaces*Nfp
-	var pM		: double[18]	-- Nfaces*Nfp
-    var rhoP    : double[18]	-- Nfaces*Nfp
-    var rhouP   : double[18]	-- Nfaces*Nfp
-    var rhovP   : double[18]	-- Nfaces*Nfp
-    var enerP   : double[18]	-- Nfaces*Nfp
-	var uP		: double[18]	-- Nfaces*Nfp
-	var vP		: double[18]	-- Nfaces*Nfp
-	var pP		: double[18]	-- Nfaces*Nfp
+	var maxVel	: double[30]	-- Nfaces*Nfp, up to p=5
+	var rhoM	: double[30]	-- Nfaces*Nfp
+	var rhouM	: double[30]	-- Nfaces*Nfp
+	var rhovM	: double[30]	-- Nfaces*Nfp
+	var enerM	: double[30]	-- Nfaces*Nfp
+	var uM		: double[30]	-- Nfaces*Nfp
+	var vM		: double[30]	-- Nfaces*Nfp
+	var pM		: double[30]	-- Nfaces*Nfp
+    var rhoP    : double[30]	-- Nfaces*Nfp
+    var rhouP   : double[30]	-- Nfaces*Nfp
+    var rhovP   : double[30]	-- Nfaces*Nfp
+    var enerP   : double[30]	-- Nfaces*Nfp
+	var uP		: double[30]	-- Nfaces*Nfp
+	var vP		: double[30]	-- Nfaces*Nfp
+	var pP		: double[30]	-- Nfaces*Nfp
 
-	var F1M		: double[18]	-- Nfaces*Nfp
-    var F2M		: double[18]	-- Nfaces*Nfp
-    var F3M		: double[18]	-- Nfaces*Nfp
-    var F4M		: double[18]	-- Nfaces*Nfp
-    var G1M		: double[18]	-- Nfaces*Nfp
-    var G2M		: double[18]	-- Nfaces*Nfp
-    var G3M		: double[18]	-- Nfaces*Nfp
-    var G4M		: double[18]	-- Nfaces*Nfp
-    var F1P     : double[18]	-- Nfaces*Nfp
-    var F2P     : double[18]	-- Nfaces*Nfp
-    var F3P     : double[18]	-- Nfaces*Nfp
-    var F4P     : double[18]	-- Nfaces*Nfp
-    var G1P     : double[18]	-- Nfaces*Nfp
-    var G2P     : double[18]	-- Nfaces*Nfp
-    var G3P     : double[18]	-- Nfaces*Nfp
-    var G4P     : double[18]	-- Nfaces*Nfp
+	var F1M		: double[30]	-- Nfaces*Nfp
+    var F2M		: double[30]	-- Nfaces*Nfp
+    var F3M		: double[30]	-- Nfaces*Nfp
+    var F4M		: double[30]	-- Nfaces*Nfp
+    var G1M		: double[30]	-- Nfaces*Nfp
+    var G2M		: double[30]	-- Nfaces*Nfp
+    var G3M		: double[30]	-- Nfaces*Nfp
+    var G4M		: double[30]	-- Nfaces*Nfp
+    var F1P     : double[30]	-- Nfaces*Nfp
+    var F2P     : double[30]	-- Nfaces*Nfp
+    var F3P     : double[30]	-- Nfaces*Nfp
+    var F4P     : double[30]	-- Nfaces*Nfp
+    var G1P     : double[30]	-- Nfaces*Nfp
+    var G2P     : double[30]	-- Nfaces*Nfp
+    var G3P     : double[30]	-- Nfaces*Nfp
+    var G4P     : double[30]	-- Nfaces*Nfp
 
 	for ii=0,3*Nfp do
 		rhoM[ii]  = QMRho[ii]
@@ -1573,34 +1587,34 @@ where
 	reads(Drw.v, Dsw.v, LIFT.v, wTimeInt.v, DOFToIntTime.v, q.cellInd, q.volRes, q.surfRes, q.preSol, q.rx, q.sx, q.ry, q.sy, q.nx, q.ny, q.Fscale, q.QPInfo, QMFace.rho, QMFace.rhou, QMFace.rhov, QMFace.ener, QPFace.rho, QPFace.rhou, QPFace.rhov, QPFace.ener),
 	writes(q.volRes, q.surfRes)
 do
-	var solIntRho		: double[21]		-- Np, up to p=5
-	var solIntRhou		: double[21]		-- Np
-	var solIntRhov		: double[21]		-- Np
-	var solIntEner		: double[21]		-- Np
-	var F1				: double[21]		-- Np
-	var F2				: double[21]		-- Np
-	var F3				: double[21]		-- Np
-	var F4				: double[21]		-- Np
-	var G1				: double[21]		-- Np
-	var G2				: double[21]		-- Np
-	var G3				: double[21]		-- Np
-	var G4				: double[21]		-- Np
-	var F1s				: double[18]		-- Nfaces*Nfp, up to p=5
-	var F2s				: double[18]		-- Nfaces*Nfp
-	var F3s				: double[18]		-- Nfaces*Nfp
-	var F4s				: double[18]		-- Nfaces*Nfp
-	var QMRho			: double[18]		-- Nfaces*Nfp
-	var QMRhou			: double[18]		-- Nfaces*Nfp
-	var QMRhov			: double[18]		-- Nfaces*Nfp
-	var QMEner			: double[18]		-- Nfaces*Nfp
-	var QPRho			: double[18]		-- Nfaces*Nfp
-	var QPRhou			: double[18]		-- Nfaces*Nfp
-	var QPRhov			: double[18]		-- Nfaces*Nfp
-	var QPEner			: double[18]		-- Nfaces*Nfp
-	var dFdr			: double[21]		-- Np, up to p=5
-	var dFds			: double[21]		-- Np
-	var dGdr			: double[21]		-- Np
-	var dGds			: double[21]		-- Np
+	var solIntRho		: double[55]		-- Np, up to p=5
+	var solIntRhou		: double[55]		-- Np
+	var solIntRhov		: double[55]		-- Np
+	var solIntEner		: double[55]		-- Np
+	var F1				: double[55]		-- Np
+	var F2				: double[55]		-- Np
+	var F3				: double[55]		-- Np
+	var F4				: double[55]		-- Np
+	var G1				: double[55]		-- Np
+	var G2				: double[55]		-- Np
+	var G3				: double[55]		-- Np
+	var G4				: double[55]		-- Np
+	var F1s				: double[30]		-- Nfaces*Nfp, up to p=5
+	var F2s				: double[30]		-- Nfaces*Nfp
+	var F3s				: double[30]		-- Nfaces*Nfp
+	var F4s				: double[30]		-- Nfaces*Nfp
+	var QMRho			: double[30]		-- Nfaces*Nfp
+	var QMRhou			: double[30]		-- Nfaces*Nfp
+	var QMRhov			: double[30]		-- Nfaces*Nfp
+	var QMEner			: double[30]		-- Nfaces*Nfp
+	var QPRho			: double[30]		-- Nfaces*Nfp
+	var QPRhou			: double[30]		-- Nfaces*Nfp
+	var QPRhov			: double[30]		-- Nfaces*Nfp
+	var QPEner			: double[30]		-- Nfaces*Nfp
+	var dFdr			: double[55]		-- Np, up to p=5
+	var dFds			: double[55]		-- Np
+	var dGdr			: double[55]		-- Np
+	var dGds			: double[55]		-- Np
 	var Nfp				: uint64 = p_space+1
 	var NfpSum			: uint64 = 3*Nfp 
 	var gamma			: double = 1.4
@@ -2092,7 +2106,6 @@ task toplevel()
 		end
 		buildNodes(p_space,gridVertexPart[color],gridEToVPart[color],qPart[color])
 	end
-
 	for color in colors do
 		if ( [int8](color) == 0 ) then
 			c.printf("---Calculate Jacobians And Normal Vectors---\n\n")
