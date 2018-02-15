@@ -107,25 +107,36 @@ local NpG		= (p_space+1)*(p_space+2)/2
 local NtG		= p_time+1
 local NfpG		= p_space+1
 
-local nSpaceIntG, nTimeIntG, stdElemFileName
+local nSpaceIntG, nTimeIntG
+local stdElemSpaceFileName, stdElemTimeFileName
+local aderIterMatFileName = "aderIterMat"
 if ( p_space == 1 ) then		
-	nSpaceIntG = 6;		stdElemFileName = "standardElementInfo1.dat"
+	nSpaceIntG = 6;		stdElemSpaceFileName = "standardElementSpace1.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps1"
 elseif ( p_space == 2 ) then
-	nSpaceIntG = 12;	stdElemFileName = "standardElementInfo2.dat"
+	nSpaceIntG = 12;	stdElemSpaceFileName = "standardElementSpace2.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps2"
 elseif ( p_space == 3 ) then
-	nSpaceIntG = 19;	stdElemFileName = "standardElementInfo3.dat"
+	nSpaceIntG = 19;	stdElemSpaceFileName = "standardElementSpace3.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps3"
 elseif ( p_space == 4 ) then
-	nSpaceIntG = 36;	stdElemFileName = "standardElementInfo4.dat"
+	nSpaceIntG = 36;	stdElemSpaceFileName = "standardElementSpace4.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps4"
 elseif ( p_space == 5 ) then
-	nSpaceIntG = 54;	stdElemFileName = "standardElementInfo5.dat"
+	nSpaceIntG = 54;	stdElemSpaceFileName = "standardElementSpace5.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps5"
 elseif ( p_space == 6 ) then
-	nSpaceIntG = 73;	stdElemFileName = "standardElementInfo6.dat"
+	nSpaceIntG = 73;	stdElemSpaceFileName = "standardElementSpace6.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps6"
 elseif ( p_space == 7 ) then
-	nSpaceIntG = 93;	stdElemFileName = "standardElementInfo7.dat"
+	nSpaceIntG = 93;	stdElemSpaceFileName = "standardElementSpace7.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps7"
 elseif ( p_space == 8 ) then
-	nSpaceIntG = 118;	stdElemFileName = "standardElementInfo8.dat"
+	nSpaceIntG = 118;	stdElemSpaceFileName = "standardElementSpace8.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps8"
 elseif ( p_space == 9 ) then
-	nSpaceIntG = 145;	stdElemFileName = "standardElementInfo9.dat"
+	nSpaceIntG = 145;	stdElemSpaceFileName = "standardElementSpace9.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Ps9"
 else
 	print("Only supports p_space = 1, 2, 3, 4, 5, 6, 7, 8, 9.")
 	print("Check p_space value in 'default.cfg' file.")
@@ -133,7 +144,20 @@ else
 	os.exit()
 end
 
-if ( p_time == 1 ) then			nTimeIntG	= 2
+if ( p_time == 1 ) then
+	nTimeIntG	= 2;	stdElemTimeFileName = "standardElementTime1.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Pt1.dat"
+elseif ( p_time == 2 ) then
+	nTimeIntG	= 3;	stdElemTimeFileName = "standardElementTime2.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Pt2.dat"
+elseif ( p_time == 3 ) then
+	nTimeIntG	= 4;	stdElemTimeFileName = "standardElementTime3.dat"
+	aderIterMatFileName = aderIterMatFileName .. "Pt3.dat"
+else
+	print("Only supports p_time = 1, 2, 3.")
+	print("Check p_time value in 'default.cfg' file.")
+	print("TREMINATE THE PROGRAM..")
+	os.exit()
 end
 
 local meshFileName = findString(configFileName,"meshFileName")
@@ -260,12 +284,12 @@ terra readDoubleVal(f : &c.FILE, val : &double)
 	return c.fscanf(f,"%lf\n",&val[0]) == 1
 end
 
-task readStdElemInfo(fileName : &int8, MSpace : region(ispace(int1d),doubleVal), Dr : region(ispace(int1d),doubleVal), Ds : region(ispace(int1d),doubleVal), Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), DrSpaceInt : region(ispace(int1d),doubleVal), DsSpaceInt : region(ispace(int1d),doubleVal), wSpaceInt : region(ispace(int1d),doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d),doubleVal), lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), AderIterMat : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal) )
+task readStdElemSpaceInfo(fileName : &int8, MSpace : region(ispace(int1d),doubleVal), Dr : region(ispace(int1d),doubleVal), Ds : region(ispace(int1d),doubleVal), Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), DrSpaceInt : region(ispace(int1d),doubleVal), DsSpaceInt : region(ispace(int1d),doubleVal), wSpaceInt : region(ispace(int1d),doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal) )
 where
-	reads writes(MSpace.v, Dr.v, Ds.v, Drw.v, Dsw.v, LIFT.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, lFirst.v, wTimeInt.v, DOFToIntTime.v, AderIterMat.v, vmapM.v)
+	reads writes(MSpace.v, Dr.v, Ds.v, Drw.v, Dsw.v, LIFT.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, vmapM.v)
 do
 	if isFile(fileName) then
-		c.printf("--------------Read Std.Elem File------------\n\n")
+		c.printf("-----------Read Std.Elem Space File---------\n\n")
 		var f = c.fopen(fileName,"r")
 		var val : double[1]
 
@@ -328,30 +352,6 @@ do
 			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
 			DOFToIntSpaceTranspose[e].v = val[0]
 		end
-
-		-- lFirst
-		for e in lFirst do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
-			lFirst[e].v = val[0]
-		end
-
-		-- wTimeInt
-		for e in wTimeInt do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
-			wTimeInt[e].v = val[0]
-		end
-
-		-- DOFToIntTime
-		for e in DOFToIntTime do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
-			DOFToIntTime[e].v = val[0]
-		end
-
-		-- AderIterMat
-		for e in AderIterMat do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
-			AderIterMat[e].v = val[0]
-		end
 		c.fclose(f)
 
 		-- vmapM
@@ -374,6 +374,59 @@ do
 				vmapM[e].v = jj
 			end
 		end
+	else
+		c.printf("File '%s' doesn't exists! Abort the program.\n",fileName)
+		c.abort()
+	end
+end
+
+task readStdElemTimeInfo(fileName : &int8, lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal))
+where
+	reads writes(lFirst.v, wTimeInt.v, DOFToIntTime.v) 
+do
+	if isFile(fileName) then
+		c.printf("-----------Read Std.Elem Time File----------\n\n")
+		var f = c.fopen(fileName,"r")
+		var val : double[1]
+
+		-- lFirst
+		for e in lFirst do
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			lFirst[e].v = val[0]
+		end
+
+		-- wTimeInt
+		for e in wTimeInt do
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			wTimeInt[e].v = val[0]
+		end
+
+		-- DOFToIntTime
+		for e in DOFToIntTime do
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			DOFToIntTime[e].v = val[0]
+		end
+	else
+		c.printf("File '%s' doesn't exists! Abort the program.\n",fileName)
+		c.abort()
+	end
+end
+
+task readAderIterMatInfo(fileName : &int8, AderIterMat : region(ispace(int1d),doubleVal))
+where
+	reads writes(AderIterMat.v)
+do
+	if isFile(fileName) then
+		c.printf("------------Read aderIterMat File-----------\n\n")
+		var f = c.fopen(fileName,"r")
+		var val : double[1]
+
+		-- AderIterMat
+		for e in AderIterMat do
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			AderIterMat[e].v = val[0]
+		end
+		c.fclose(f)
 	else
 		c.printf("File '%s' doesn't exists! Abort the program.\n",fileName)
 		c.abort()
@@ -966,7 +1019,7 @@ do
 	var rH				: double
 	var gamma			: double = 1.4
 	var w				: double
-	var fluxF1			: double[55]		-- Np, up to p=5
+	var fluxF1			: double[55]		-- Np, Ps=9 
 	var fluxF2			: double[55]		-- Np
 	var fluxF3			: double[55]		-- Np
 	var fluxF4			: double[55]		-- Np
@@ -974,7 +1027,7 @@ do
 	var fluxG2			: double[55]		-- Np
 	var fluxG3			: double[55]		-- Np
 	var fluxG4			: double[55]		-- Np
-	var gradFluxesIntFr1: double[145]		-- nSpaceInt, up to p=5
+	var gradFluxesIntFr1: double[145]		-- nSpaceInt, Ps=9 
 	var gradFluxesIntFr2: double[145]		-- nSpaceInt
 	var gradFluxesIntFr3: double[145]		-- nSpaceInt
 	var gradFluxesIntFr4: double[145]		-- nSpaceInt
@@ -990,14 +1043,14 @@ do
 	var gradFluxesIntGs2: double[145]		-- nSpaceInt
 	var gradFluxesIntGs3: double[145]		-- nSpaceInt
 	var gradFluxesIntGs4: double[145]		-- nSpaceInt
-	var resSolRho		: double[110]		-- (Np*Nt)
-	var resSolRhou		: double[110]		-- (Np*Nt)
-	var resSolRhov		: double[110]		-- (Np*Nt)
-	var resSolEner		: double[110]		-- (Np*Nt)
-	var oldSolRho		: double[110]		-- (Np*Nt)
-	var oldSolRhou		: double[110]		-- (Np*Nt)
-	var oldSolRhov		: double[110]		-- (Np*Nt)
-	var oldSolEner		: double[110]		-- (Np*Nt)
+	var resSolRho		: double[220]		-- (Np*Nt), Ps=9, Pt=3
+	var resSolRhou		: double[220]		-- (Np*Nt)
+	var resSolRhov		: double[220]		-- (Np*Nt)
+	var resSolEner		: double[220]		-- (Np*Nt)
+	var oldSolRho		: double[220]		-- (Np*Nt)
+	var oldSolRhou		: double[220]		-- (Np*Nt)
+	var oldSolRhov		: double[220]		-- (Np*Nt)
+	var oldSolEner		: double[220]		-- (Np*Nt)
 	var intSolRho		: double[55]		-- Np
 	var intSolRhou		: double[55]		-- Np
 	var intSolRhov		: double[55]		-- Np
@@ -1010,10 +1063,10 @@ do
 	var resDumRhou		: double[145]		-- nSpaceInt 
 	var resDumRhov		: double[145]		-- nSpaceInt 
 	var resDumEner		: double[145]		-- nSpaceInt 
-	var resTotRho		: double[110]		-- (Np*Nt)
-	var resTotRhou		: double[110]		-- (Np*Nt)
-	var resTotRhov		: double[110]		-- (Np*Nt)
-	var resTotEner		: double[110]		-- (Np*Nt)
+	var resTotRho		: double[220]		-- (Np*Nt)
+	var resTotRhou		: double[220]		-- (Np*Nt)
+	var resTotRhov		: double[220]		-- (Np*Nt)
+	var resTotEner		: double[220]		-- (Np*Nt)
 	var isConverged		: bool = true
 	var NtNp			: uint64 = Nt*Np
 
@@ -1278,15 +1331,15 @@ do
 	var cellNum			: uint64
 	var cellNumTemp		: uint64
 	var indVal			: uint64	
-	var preSolRho		: double[110]		-- Np*Nt, up to p=5
-	var preSolRhou		: double[110]		-- Np*Nt
-	var preSolRhov		: double[110]		-- Np*Nt
-	var preSolEner		: double[110]		-- Np*Nt
-	var preSolRhoTemp	: double[110]		-- Np*Nt
-	var preSolRhouTemp	: double[110]		-- Np*Nt
-	var preSolRhovTemp	: double[110]		-- Np*Nt
-	var preSolEnerTemp	: double[110]		-- Np*Nt
-	var solIntRho		: double[55]		-- Np, up to p=5
+	var preSolRho		: double[220]		-- Np*Nt, Ps=9, Pt=3
+	var preSolRhou		: double[220]		-- Np*Nt
+	var preSolRhov		: double[220]		-- Np*Nt
+	var preSolEner		: double[220]		-- Np*Nt
+	var preSolRhoTemp	: double[220]		-- Np*Nt
+	var preSolRhouTemp	: double[220]		-- Np*Nt
+	var preSolRhovTemp	: double[220]		-- Np*Nt
+	var preSolEnerTemp	: double[220]		-- Np*Nt
+	var solIntRho		: double[55]		-- Np, Ps=9
 	var solIntRhou		: double[55]		-- Np
 	var solIntRhov		: double[55]		-- Np
 	var solIntEner		: double[55]		-- Np
@@ -1506,7 +1559,7 @@ task Euler2DLF(cellInd : uint64, p_space : int8, F1 : &double, F2 : &double, F3 
 	var maxVelTemp : double
 	var gamma	: double = 1.4
 	var Nfp		: uint64 = p_space+1 
-	var maxVel	: double[30]	-- Nfaces*Nfp, up to p=5
+	var maxVel	: double[30]	-- Nfaces*Nfp, Ps=9
 	var rhoM	: double[30]	-- Nfaces*Nfp
 	var rhouM	: double[30]	-- Nfaces*Nfp
 	var rhovM	: double[30]	-- Nfaces*Nfp
@@ -1587,7 +1640,7 @@ where
 	reads(Drw.v, Dsw.v, LIFT.v, wTimeInt.v, DOFToIntTime.v, q.cellInd, q.volRes, q.surfRes, q.preSol, q.rx, q.sx, q.ry, q.sy, q.nx, q.ny, q.Fscale, q.QPInfo, QMFace.rho, QMFace.rhou, QMFace.rhov, QMFace.ener, QPFace.rho, QPFace.rhou, QPFace.rhov, QPFace.ener),
 	writes(q.volRes, q.surfRes)
 do
-	var solIntRho		: double[55]		-- Np, up to p=5
+	var solIntRho		: double[55]		-- Np, Ps=9
 	var solIntRhou		: double[55]		-- Np
 	var solIntRhov		: double[55]		-- Np
 	var solIntEner		: double[55]		-- Np
@@ -1599,7 +1652,7 @@ do
 	var G2				: double[55]		-- Np
 	var G3				: double[55]		-- Np
 	var G4				: double[55]		-- Np
-	var F1s				: double[30]		-- Nfaces*Nfp, up to p=5
+	var F1s				: double[30]		-- Nfaces*Nfp, Ps=9 
 	var F2s				: double[30]		-- Nfaces*Nfp
 	var F3s				: double[30]		-- Nfaces*Nfp
 	var F4s				: double[30]		-- Nfaces*Nfp
@@ -1611,7 +1664,7 @@ do
 	var QPRhou			: double[30]		-- Nfaces*Nfp
 	var QPRhov			: double[30]		-- Nfaces*Nfp
 	var QPEner			: double[30]		-- Nfaces*Nfp
-	var dFdr			: double[55]		-- Np, up to p=5
+	var dFdr			: double[55]		-- Np, Ps=9 
 	var dFds			: double[55]		-- Np
 	var dGdr			: double[55]		-- Np
 	var dGds			: double[55]		-- Np
@@ -1975,12 +2028,14 @@ task toplevel()
 	var DsSpaceInt	= region(ispace(int1d,nSpaceInt*nDOFs), doubleVal)
 	var wSpaceInt	= region(ispace(int1d,nSpaceInt), doubleVal)
 	var DOFToIntSpaceTranspose= region(ispace(int1d,nSpaceInt*nDOFs), doubleVal)
-	var lFirst		= region(ispace(int1d,2), doubleVal)
-	var wTimeInt	= region(ispace(int1d,2), doubleVal)
-	var DOFToIntTime= region(ispace(int1d,2*2), doubleVal)
+	var lFirst		= region(ispace(int1d,Nt), doubleVal)
+	var wTimeInt	= region(ispace(int1d,nTimeInt), doubleVal)
+	var DOFToIntTime= region(ispace(int1d,nTimeInt*Nt), doubleVal)
 	var AderIterMat	= region(ispace(int1d,(nDOFs*Nt)*(nDOFs*Nt)), doubleVal)
 	var vmapM		= region(ispace(int1d,3*Nfp), uintVal)
-	readStdElemInfo(stdElemFileName, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, lFirst, wTimeInt, DOFToIntTime, AderIterMat, vmapM)
+	readStdElemSpaceInfo(stdElemSpaceFileName, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, vmapM)
+	readStdElemTimeInfo(stdElemTimeFileName, lFirst, wTimeInt, DOFToIntTime)
+	readAderIterMatInfo(aderIterMatFileName, AderIterMat)
 
 	-- Create aliased partitions of regions for standard element
 	-- info regions to SPMDize the code
@@ -1992,16 +2047,18 @@ task toplevel()
 	var coloring6 = c.legion_domain_point_coloring_create()
 	var coloring7 = c.legion_domain_point_coloring_create()
 	var coloring8 = c.legion_domain_point_coloring_create()
+	var coloring9 = c.legion_domain_point_coloring_create()
 
 	for ii=0,config.parallelism do
 		c.legion_domain_point_coloring_color_domain(coloring1, [int1d](ii), rect1d {0,nDOFs*nDOFs-1})		-- MSpace, Dr, Ds, Drw, Dsw
 		c.legion_domain_point_coloring_color_domain(coloring2, [int1d](ii), rect1d {0,3*Nfp*nDOFs-1})		-- LIFT
 		c.legion_domain_point_coloring_color_domain(coloring3, [int1d](ii), rect1d {0,nSpaceInt*nDOFs-1})	-- DrSpaceInt, DsSpaceInt, DOFToIntSpaceTranspose
 		c.legion_domain_point_coloring_color_domain(coloring4, [int1d](ii), rect1d {0,nSpaceInt-1})			-- wSpaceInt
-		c.legion_domain_point_coloring_color_domain(coloring5, [int1d](ii), rect1d {0,2-1})					-- lFirst, wTimeInt
-		c.legion_domain_point_coloring_color_domain(coloring6, [int1d](ii), rect1d {0,4-1})					-- DOFTonIntTime
-		c.legion_domain_point_coloring_color_domain(coloring7, [int1d](ii), rect1d {0,nDOFs*Nt*nDOFs*Nt-1})	-- AderIterMat
-		c.legion_domain_point_coloring_color_domain(coloring8, [int1d](ii), rect1d {0,3*Nfp-1})				-- vmapM
+		c.legion_domain_point_coloring_color_domain(coloring5, [int1d](ii), rect1d {0,Nt-1})					-- lFirst
+		c.legion_domain_point_coloring_color_domain(coloring6, [int1d](ii), rect1d {0,nTimeInt-1})				-- wTimeInt
+		c.legion_domain_point_coloring_color_domain(coloring7, [int1d](ii), rect1d {0,nTimeInt*Nt-1})					-- DOFTonIntTime
+		c.legion_domain_point_coloring_color_domain(coloring8, [int1d](ii), rect1d {0,nDOFs*Nt*nDOFs*Nt-1})	-- AderIterMat
+		c.legion_domain_point_coloring_color_domain(coloring9, [int1d](ii), rect1d {0,3*Nfp-1})				-- vmapM
 	end
 	var MSpacePart					= partition(aliased,MSpace,coloring1,ispace(int1d,config.parallelism))
 	var DrPart						= partition(aliased,Dr,coloring1,ispace(int1d,config.parallelism))
@@ -2014,10 +2071,10 @@ task toplevel()
 	var DOFToIntSpaceTransposePart	= partition(aliased,DOFToIntSpaceTranspose,coloring3,ispace(int1d,config.parallelism))
 	var wSpaceIntPart				= partition(aliased,wSpaceInt,coloring4,ispace(int1d,config.parallelism))
 	var lFirstPart					= partition(aliased,lFirst,coloring5,ispace(int1d,config.parallelism))
-	var wTimeIntPart				= partition(aliased,wTimeInt,coloring5,ispace(int1d,config.parallelism))
-	var DOFToIntTimePart			= partition(aliased,DOFToIntTime,coloring6,ispace(int1d,config.parallelism))
-	var AderIterMatPart				= partition(aliased,AderIterMat,coloring7,ispace(int1d,config.parallelism))
-	var vmapMPart					= partition(aliased,vmapM,coloring8,ispace(int1d,config.parallelism))
+	var wTimeIntPart				= partition(aliased,wTimeInt,coloring6,ispace(int1d,config.parallelism))
+	var DOFToIntTimePart			= partition(aliased,DOFToIntTime,coloring7,ispace(int1d,config.parallelism))
+	var AderIterMatPart				= partition(aliased,AderIterMat,coloring8,ispace(int1d,config.parallelism))
+	var vmapMPart					= partition(aliased,vmapM,coloring9,ispace(int1d,config.parallelism))
 	c.legion_domain_point_coloring_destroy(coloring1)
 	c.legion_domain_point_coloring_destroy(coloring2)
 	c.legion_domain_point_coloring_destroy(coloring3)
@@ -2026,6 +2083,7 @@ task toplevel()
 	c.legion_domain_point_coloring_destroy(coloring6)
 	c.legion_domain_point_coloring_destroy(coloring7)
 	c.legion_domain_point_coloring_destroy(coloring8)
+	c.legion_domain_point_coloring_destroy(coloring9)
 
 
 	-- 4) Read mesh
@@ -2121,7 +2179,7 @@ task toplevel()
 	__fence(__execution, __block)
 
 	c.printf("------------Run main simulation-------------\n")
-	c.printf("simTime = %9.4lf\n",0.0)
+	c.printf("simTime = %9.4lf\n",simTime)
 	var ts_start = c.legion_get_current_time_in_micros()
 
 
