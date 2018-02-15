@@ -558,38 +558,7 @@ do
 		c.fclose(f)
 	end
 end
---[[
-task colorFaces(Nfp : uint64, q : region(ispace(ptr), Elem), QMFace : region(ispace(ptr), Surface), QPFace : region(ispace(ptr), Surface)) 
-where
-	reads(q.cellColor, q.adjQP, q.QPInfo, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor),
-	writes(q.adjQP, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor)
-do
-	var cellInd		: uint64
-	var colorVal	: uint64
-	var lowerBound  : uint64
 
-	for e in q do
-		lowerBound = [uint64](e)
-		break
-	end
-
-	for e in q do
-		colorVal = e.cellColor
-		QMFace[lowerBound].faceColor= colorVal
-		QMFace[lowerBound].faceInd	= lowerBound
-		QPFace[lowerBound].faceColor= colorVal
-		QPFace[lowerBound].faceInd	= lowerBound
-		for jj=0,3 do
-			cellInd = e.QPInfo[3][jj*Nfp]
-			if not ( colorVal == [uint64](q[cellInd].cellColor) ) then
-				-- Adjacent cell is not in the same partition
-				e.adjQP[jj] = false
-			end
-		end
-		lowerBound = lowerBound + 1
-	end
-end
---]]
 task colorFaces(Nfp : uint64, q : region(ispace(ptr), Elem), qEqual : region(ispace(ptr), Elem), QMFace : region(ispace(ptr), Surface), QPFace : region(ispace(ptr), Surface))
 where
 	reads(q.cellColor, qEqual.cellColor, qEqual.adjQP, qEqual.QPInfo, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor),
@@ -606,9 +575,9 @@ do
 
 	for e in qEqual do
 		colorVal = e.cellColor
-		QMFace[lowerBound].faceColor	= colorVal
+		QMFace[lowerBound].faceColor= colorVal
 		QMFace[lowerBound].faceInd	= lowerBound
-		QPFace[lowerBound].faceColor	= colorVal
+		QPFace[lowerBound].faceColor= colorVal
 		QPFace[lowerBound].faceInd	= lowerBound
 		for jj=0,3 do
 			cellInd = e.QPInfo[3][jj*Nfp]
@@ -2115,6 +2084,7 @@ task toplevel()
 	var gridVertexPart3	= image(gridVertex, gridEToVPart, gridEToV.v3)
 	var gridVertexPart	= gridVertexPart1 | gridVertexPart2 | gridVertexPart3
 
+
 	-- 8) Preprocessing and initialize the solution
 	for color in colors do
 		if ( [int8](color) == 0 ) then
@@ -2137,9 +2107,11 @@ task toplevel()
 	end
 	__fence(__execution, __block)
 
-	var ts_start = c.legion_get_current_time_in_micros()
 	c.printf("------------Run main simulation-------------\n")
 	c.printf("simTime = %9.4lf\n",0.0)
+	var ts_start = c.legion_get_current_time_in_micros()
+
+
 	-- 9) Run main simulation
 	__demand(__spmd)
 	while  simTime < finalTime do
@@ -2171,13 +2143,11 @@ task toplevel()
 
 		-- Predictor step
 		for color in colors do
---			Euler2DPredictorWrapper(p_space,nDOFs,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpace,DrSpaceInt,DsSpaceInt,wSpaceInt,DOFToIntSpaceTranspose,lFirst,wTimeInt,DOFToIntTime,AderIterMat,vmapM,qPart[color],qPartHalo[color],QMFacePart[color],QPFacePart[color])
 			Euler2DPredictorWrapper(p_space,nDOFs,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpacePart[color],DrSpaceIntPart[color],DsSpaceIntPart[color],wSpaceIntPart[color],DOFToIntSpaceTransposePart[color],lFirstPart[color],wTimeIntPart[color],DOFToIntTimePart[color],AderIterMatPart[color],vmapMPart[color],qPart[color],qPartHalo[color],QMFacePart[color],QPFacePart[color])
 		end
 
 		-- Corrector step
 		for color in colors do
---			Euler2DCorrector(p_space,nDOFs,Nt,nTimeInt,Drw,Dsw,LIFT,wTimeInt,DOFToIntTime,qPart[color],QMFacePart[color],QPFacePart[color])
 			Euler2DCorrector(p_space,nDOFs,Nt,nTimeInt,DrwPart[color],DswPart[color],LIFTPart[color],wTimeIntPart[color],DOFToIntTimePart[color],qPart[color],QMFacePart[color],QPFacePart[color])
 		end
 
@@ -2187,7 +2157,7 @@ task toplevel()
 		end
 
 		-- Marching one time step
---		c.printf("simTime = %9.4lf\n",simTime)
+--		c.printf("simTime = %9.4lf\n",simTime)	-- This line should be commented if SPMD is used
 		simTime += dt
 	end
 	__fence(__execution, __block)
