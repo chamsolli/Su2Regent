@@ -1321,7 +1321,7 @@ do
 			break
 		end
 	end	
-	if ( cnt > 90 ) then
+	if ( cntTot > 90 ) then
 		c.printf("Euler2DPredictor step is failed in cellNum = %10llu\n",cellNum)
 		c.printf("TERMINATE THE PROGRAM..")
 		c.abort()
