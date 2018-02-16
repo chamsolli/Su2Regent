@@ -1116,7 +1116,7 @@ do
 
 	-- Iterative algorithm to compute the predictor solution
 	cntTot = 0
-	while true do
+	for iii=0,100 do
 		-- Initialize the total residual with resSol and
 		-- store the current solution in oldSol
 		indVal = 0
@@ -1321,6 +1321,11 @@ do
 			break
 		end
 	end	
+	if ( cnt > 90 ) then
+		c.printf("Euler2DPredictor step is failed in cellNum = %10llu\n",cellNum)
+		c.printf("TERMINATE THE PROGRAM..")
+		c.abort()
+	end
 end
 
 task Euler2DPredictorWrapper(p_space : int8, Np : uint64, Nt : uint64, nSpaceInt : uint64, nTimeInt : uint64, dt : double, tolSolAderRho : double, tolSolAderRhouRhov : double, tolSolAderEner : double, MSpace : region(ispace(int1d), doubleVal), DrSpaceInt : region(ispace(int1d), doubleVal), DsSpaceInt : region(ispace(int1d), doubleVal), wSpaceInt : region(ispace(int1d), doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d), doubleVal), lFirst : region(ispace(int1d), doubleVal), wTimeInt : region(ispace(int1d), doubleVal), DOFToIntTime : region(ispace(int1d), doubleVal), AderIterMat : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal), q : region(ispace(ptr), Elem), qHalo : region(ispace(ptr),Elem), QMFace : region(ispace(ptr),Surface), QPFace : region(ispace(ptr),Surface))
