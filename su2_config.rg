@@ -10,6 +10,7 @@ struct su2Config
 	simCase					: int8[64],
 	p_space					: uint64,
 	p_time					: uint64,
+	nTimeLev				: uint64,
 	fluxTypeDG				: int8[16],
 	timeStepping			: int8[16],
 	CFL 					: double,
@@ -94,6 +95,10 @@ terra readConfigFile(configFileNameInput : &int8, self : &su2Config)
 			self.p_time = [uint64](c.atoi(strIn3))
 			isOptionScanned = true
 		end
+		if cstring.strcmp(strIn1,"nTimeLev") == 0 then
+			self.nTimeLev = [uint64](c.atoi(strIn3))
+			isOptionScanned = true
+		end
 		if cstring.strcmp(strIn1,"CFL") == 0 then
 			self.CFL = c.atof(strIn3)
 			isOptionScanned = true
@@ -151,15 +156,16 @@ terra readConfigFile(configFileNameInput : &int8, self : &su2Config)
 	self.nDOFs	= (self.p_space+1)*(self.p_space+2)/2
 	self.Nfp	= self.p_space + 1
 
-	c.printf("Config file = %s\n",configFileNameInput)
-	c.printf("Mesh file = %s\n",self.meshFileName)
-	c.printf("p_space = %llu\n",self.p_space)
-	c.printf("p_time = %llu\n",self.p_time)
-	c.printf("CFL = %lf\n",self.CFL)
-	c.printf("fluxTypeDG = %s\n",self.fluxTypeDG)
-	c.printf("timeStepping = %s\n",self.timeStepping)
+	c.printf("Config file          = %s\n",configFileNameInput)
+	c.printf("Mesh file            = %s\n",self.meshFileName)
+	c.printf("p_space              = %llu\n",self.p_space)
+	c.printf("p_time               = %llu\n",self.p_time)
+	c.printf("nTimeLev             = %llu\n",self.nTimeLev)
+	c.printf("CFL                  = %lf\n",self.CFL)
+	c.printf("fluxTypeDG           = %s\n",self.fluxTypeDG)
+	c.printf("timeStepping         = %s\n",self.timeStepping)
 	c.printf("DOF in each triangle = %llu\n",self.nDOFs)
-	c.printf("Nfp in each face = %llu\n",self.Nfp)
+	c.printf("Nfp in each face     = %llu\n",self.Nfp)
 end
 
 terra su2Config:initializeFromCommand()
@@ -168,6 +174,7 @@ terra su2Config:initializeFromCommand()
 	var configInputGiven = false
 	cstring.strcpy(self.configFileName,"default.cfg")
 	self.parallelism	= 1
+	self.nTimeLev		= 1
 	self.epsVal			= 5.0
 	self.rho0Val		= 1.0
 	self.u0Val			= 1.0
