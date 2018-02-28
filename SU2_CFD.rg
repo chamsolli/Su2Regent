@@ -380,9 +380,9 @@ do
 	end
 end
 
-task readStdElemTimeInfo(fileName : &int8, lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal))
+task readStdElemTimeInfo(fileName : &int8, lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), DOFToIntAdjTime : region(ispace(int1d),doubleVal))
 where
-	reads writes(lFirst.v, wTimeInt.v, DOFToIntTime.v) 
+	reads writes(lFirst.v, wTimeInt.v, DOFToIntTime.v, DOFToIntAdjTime.v) 
 do
 	if isFile(fileName) then
 		c.printf("-----------Read Std.Elem Time File----------\n\n")
@@ -405,6 +405,12 @@ do
 		for e in DOFToIntTime do
 			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
 			DOFToIntTime[e].v = val[0]
+		end
+
+		-- DOFToIntAdjTime
+		for e in DOFToIntAdjTime do
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			DOFToIntAdjTime[e].v = val[0]
 		end
 	else
 		c.printf("File '%s' doesn't exists! Abort the program.\n",fileName)
@@ -2036,10 +2042,11 @@ task toplevel()
 	var lFirst		= region(ispace(int1d,Nt), doubleVal)
 	var wTimeInt	= region(ispace(int1d,nTimeInt), doubleVal)
 	var DOFToIntTime= region(ispace(int1d,nTimeInt*Nt), doubleVal)
+	var DOFToIntAdjTime= region(ispace(int1d,2*nTimeInt*Nt), doubleVal)
 	var AderIterMat	= region(ispace(int1d,(nDOFs*Nt)*(nDOFs*Nt)), doubleVal)
 	var vmapM		= region(ispace(int1d,3*Nfp), uintVal)
 	readStdElemSpaceInfo(stdElemSpaceFileName, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, vmapM)
-	readStdElemTimeInfo(stdElemTimeFileName, lFirst, wTimeInt, DOFToIntTime)
+	readStdElemTimeInfo(stdElemTimeFileName, lFirst, wTimeInt, DOFToIntTime, DOFToIntAdjTime)
 	readAderIterMatInfo(aderIterMatFileName, AderIterMat)
 
 	-- Create aliased partitions of regions for standard element
