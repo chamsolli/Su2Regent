@@ -2105,18 +2105,14 @@ task toplevel()
 	var gridEToVEqual	= partition(equal,gridEToV,colors)
 
     -- Read vertices info
+	c.printf("--------------Read Vertices Info------------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("--------------Read Vertices Info------------\n\n")
-		end
 		readVertex(meshFileName,gridVertexEqual[color])
 	end
 
 	-- Read EToV info
+	c.printf("----------Read Elem To Vertex Info----------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("----------Read Elem To Vertex Info----------\n\n")
-		end
 		readElemToVertex(meshFileName,gridNv,gridVertex,gridEToVEqual[color])
 	end
 
@@ -2132,22 +2128,16 @@ task toplevel()
 
 
 	-- 6) Read connectivity info and graph partition info
+	c.printf("---------Generate Connectiviy Info----------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("---------Generate Connectiviy Info----------\n\n")
-		end
 		generateQPConnectivity(EToEFileName, EToFFileName, Nfp, qEqual[color])
 	end
+	c.printf("---------------Color Elements---------------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("---------------Color Elements---------------\n\n")
-		end
 		colorElem(partFileNameLocal, config.parallelism, gridVertex, gridEToVEqual[color],qEqual[color])
 	end
+	c.printf("-----------------Color Faces----------------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("-----------------Color Faces----------------\n\n")
-		end
 		colorFaces(Nfp, q, qEqual[color], QMFaceEqual[color], QPFaceEqual[color])
 	end
 	__fence(__execution, __block)
@@ -2170,22 +2160,16 @@ task toplevel()
 
 
 	-- 8) Preprocessing and initialize the solution
+	c.printf("----------Build Internal DOFs Info----------\n\n")
 	for color in colors do
-		if ( [int8](color) == 0 ) then
-			c.printf("----------Build Internal DOFs Info----------\n\n")
-		end
 		buildNodes(p_space,gridVertexPart[color],gridEToVPart[color],qPart[color])
 	end
+	c.printf("---Calculate Jacobians And Normal Vectors---\n\n")
 	for color in colors do
-		if ( [int8](color) == 0 ) then
-			c.printf("---Calculate Jacobians And Normal Vectors---\n\n")
-		end
 		calcGeoFacAndNormal(p_space,nSpaceInt,Dr,Ds,DrSpaceInt,DsSpaceInt,qPart[color])
 	end
+	c.printf("------------Initialize Solution-------------\n\n")
 	for color in colors do
-		if ( [int8](color) == 0 ) then
-			c.printf("------------Initialize Solution-------------\n\n")
-		end
 		solutionAtTimeT(0.0,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,config.p0Val,qPart[color])
 	end
 	__fence(__execution, __block)
