@@ -2166,11 +2166,11 @@ task toplevel()
 	end
 	c.printf("---Calculate Jacobians And Normal Vectors---\n\n")
 	for color in colors do
-		calcGeoFacAndNormal(p_space,nSpaceInt,Dr,Ds,DrSpaceInt,DsSpaceInt,qPart[color])
+		calcGeoFacAndNormal(p_space,nSpaceInt,Dr,Ds,DrSpaceInt,DsSpaceInt,qEqual[color])
 	end
 	c.printf("------------Initialize Solution-------------\n\n")
 	for color in colors do
-		solutionAtTimeT(0.0,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,config.p0Val,qPart[color])
+		solutionAtTimeT(0.0,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,config.p0Val,qEqual[color])
 	end
 	__fence(__execution, __block)
 
@@ -2235,13 +2235,13 @@ task toplevel()
 
 	--10) Calculate error
     for color in colors do
-        L1Error     +=  calcL1Error(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qPart[color])
+		L1Error     +=  calcL1Error(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qEqual[color])
     end
     for color in colors do
-        L2Error     +=  calcL2Error(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qPart[color])
+		L2Error     +=  calcL2Error(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qEqual[color])
     end
     for color in colors do
-        LInfError   max= calcLInfError(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qPart[color])
+		LInfError   max= calcLInfError(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qEqual[color])
     end
 
     L1Error /= (nDOFs*gridK)
