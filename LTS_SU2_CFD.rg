@@ -100,12 +100,30 @@ function readElemAndPoint(file)
 	return K, Nv
 end
 
+-- Read number of faces
+function readNFaces(file)
+	if not fileExists(file) then
+		print("Face Info file",file,"doesn't exits in current directory.")
+		print("TERMINATE THE PROGRAM..")
+		os.exit()
+	end
+
+	local NFaces, line
+	local f = io.open(file,"rb")
+	line = f:read()
+	NFaces = tonumber(line)
+	f:close()
+
+	return NFaces
+end
+
 local p_space	= findStringVal(configFileName,"p_space")
 local p_time	= findStringVal(configFileName,"p_time")
 
 local NpG		= (p_space+1)*(p_space+2)/2
 local NtG		= p_time+1
 local NfpG		= p_space+1
+local NFacesG
 
 local nSpaceIntG, nTimeIntG
 local stdElemSpaceFileName, stdElemTimeFileName
@@ -166,31 +184,34 @@ gridNvG, gridKG = readElemAndPoint(meshFileName)
 local EToEFileName
 local EToFFileName
 local partFileName
+local faceFileName
 if ( gridKG == 166 ) then
-	EToEFileName = "EToE009.dat" ; EToFFileName = "EToF009.dat";
-	partFileName = "grid009Part"
+	EToEFileName = "EToE009.dat"; EToFFileName = "EToF009.dat";
+	partFileName = "grid009Part"; faceFileName = "faceInfo009.dat"
 elseif ( gridKG == 640 ) then
-	EToEFileName = "EToE017.dat" ; EToFFileName = "EToF017.dat";
-	partFileName = "grid017Part"
+	EToEFileName = "EToE017.dat"; EToFFileName = "EToF017.dat";
+	partFileName = "grid017Part"; faceFileName = "faceInfo017.dat"
 elseif ( gridKG == 2454 ) then
-	EToEFileName = "EToE033.dat" ; EToFFileName = "EToF033.dat";
-	partFileName = "grid033Part"
+	EToEFileName = "EToE033.dat"; EToFFileName = "EToF033.dat";
+	partFileName = "grid033Part"; faceFileName = "faceInfo033.dat"
 elseif ( gridKG == 9638 ) then
-	EToEFileName = "EToE065.dat" ; EToFFileName = "EToF065.dat";
-	partFileName = "grid065Part"
+	EToEFileName = "EToE065.dat"; EToFFileName = "EToF065.dat";
+	partFileName = "grid065Part"; faceFileName = "faceInfo065.dat"
 elseif ( gridKG == 38428 ) then
-	EToEFileName = "EToE129.dat" ; EToFFileName = "EToF129.dat";
-	partFileName = "grid129Part"
+	EToEFileName = "EToE129.dat"; EToFFileName = "EToF129.dat";
+	partFileName = "grid129Part"; faceFileName = "faceInfo129.dat"
 elseif ( gridKG == 163426 ) then
-	EToEFileName = "EToE257.dat" ; EToFFileName = "EToF257.dat";
-	partFileName = "grid257Part"
+	EToEFileName = "EToE257.dat"; EToFFileName = "EToF257.dat";
+	partFileName = "grid257Part"; faceFileName = "faceInfo257.dat"
 elseif ( gridKG == 686300 ) then
-	EToEFileName = "EToE513.dat" ; EToFFileName = "EToF513.dat";
-	partFileName = "grid513Part"
+	EToEFileName = "EToE513.dat"; EToFFileName = "EToF513.dat";
+	partFileName = "grid513Part"; faceFileName = "faceInfo513.dat"
 elseif ( gridKG == 2821764 ) then
-	EToEFileName = "EToE1025.dat" ; EToFFileName = "EToF1025.dat";
-	partFileName = "grid1025Part"
+	EToEFileName = "EToE1025.dat"; EToFFileName = "EToF1025.dat";
+	partFileName = "grid1025Part"; faceFileName = "faceInfo1025.dat"
 end
+
+NFacesG = readNFaces(faceFileName)
 
 fspace doubleVal {
 	v : double
@@ -247,7 +268,9 @@ fspace Elem {
 	e3				: int1d;
 	cellInd			: uint64;
 	cellColor		: int1d;
-	timeLev			: int1d
+	timeLev			: int1d;
+	factTimeLev		: double;
+	factTimeLevRev	: uint64
 }
 
 fspace Surface {
@@ -257,6 +280,17 @@ fspace Surface {
 	ener		: double[3*NfpG][nTimeIntG];	-- nTimeInt*(Nfaces*Nfp)
 	faceInd		: uint64;
 	faceColor	: int1d;
+}
+
+fspace surf {
+	elem0			: uint64;
+	elem1			: uint64;
+	face0			: uint64;
+	face1			: uint64;
+	isDiffTimeLev	: bool;
+	isElem1Halo		: bool;
+	faceColorGraph	: int1d;
+	faceColorTime	: int1d
 }
 
 terra skipHeader(f : &c.FILE)
@@ -281,6 +315,10 @@ terra isFile(fileName : rawstring)
 	return true
 end
 
+terra readUintVal(f : &c.FILE, val : &uint64)
+	return c.fscanf(f,"%llu\n",&val[0]) == 1
+end
+
 terra readDoubleVal(f : &c.FILE, val : &double)
 	return c.fscanf(f,"%lf\n",&val[0]) == 1
 end
@@ -296,61 +334,61 @@ do
 
 		-- MSpace
 		for e in MSpace do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			MSpace[e].v = val[0]
 		end
 
 		-- Dr
 		for e in Dr do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			Dr[e].v = val[0]
 		end
 
 		-- Ds
 		for e in Ds do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			Ds[e].v = val[0]
 		end
 
 		-- Drw
 		for e in Drw do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			Drw[e].v = val[0]
 		end
 
 		-- Dsw
 		for e in Dsw do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			Dsw[e].v = val[0]
 		end
 
 		-- LIFT
 		for e in LIFT do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			LIFT[e].v = val[0]
 		end
 
 		-- DrSpaceInt
 		for e in DrSpaceInt do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			DrSpaceInt[e].v = val[0]
 		end
 
 		-- DsSpaceInt
 		for e in DsSpaceInt do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			DsSpaceInt[e].v = val[0]
 		end
 
 		-- wSpaceInt
 		for e in wSpaceInt do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			wSpaceInt[e].v = val[0]
 		end
 
 		-- DOFToIntSpaceTranspose
 		for e in DOFToIntSpaceTranspose do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementSpaceInfo file")
 			DOFToIntSpaceTranspose[e].v = val[0]
 		end
 		c.fclose(f)
@@ -381,9 +419,9 @@ do
 	end
 end
 
-task readStdElemTimeInfo(fileName : &int8, lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal))
+task readStdElemTimeInfo(fileName : &int8, lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), DOFToIntAdjTime : region(ispace(int1d),doubleVal))
 where
-	reads writes(lFirst.v, wTimeInt.v, DOFToIntTime.v) 
+	reads writes(lFirst.v, wTimeInt.v, DOFToIntTime.v, DOFToIntAdjTime.v) 
 do
 	if isFile(fileName) then
 		c.printf("-----------Read Std.Elem Time File----------\n\n")
@@ -392,21 +430,28 @@ do
 
 		-- lFirst
 		for e in lFirst do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementTimeInfo file")
 			lFirst[e].v = val[0]
 		end
 
 		-- wTimeInt
 		for e in wTimeInt do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementTimeInfo file")
 			wTimeInt[e].v = val[0]
 		end
 
 		-- DOFToIntTime
 		for e in DOFToIntTime do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementTimeInfo file")
 			DOFToIntTime[e].v = val[0]
 		end
+
+		-- DOFToIntAdjTime
+		for e in DOFToIntAdjTime do
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementTimeInfo file")
+			DOFToIntAdjTime[e].v = val[0]
+		end
+
 	else
 		c.printf("File '%s' doesn't exists! Abort the program.\n",fileName)
 		c.abort()
@@ -424,7 +469,7 @@ do
 
 		-- AderIterMat
 		for e in AderIterMat do
-			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in standardElementInfo file")
+			regentlib.assert(readDoubleVal(f,val), "Less data that it should be in aderIterMat file")
 			AderIterMat[e].v = val[0]
 		end
 		c.fclose(f)
@@ -450,12 +495,12 @@ do
 
 	-- Reads data until corresponding partition
 	for ii=0, lowerBound do
-		regentlib.assert(readCoord(f,coord),"Error in readMesh task. Less coordinates data than it should be. Check grid file.")
+		regentlib.assert(readCoord(f,coord),"Error in readVertex task. Less coordinates data than it should be. Check grid file.")
 	end
 
 	-- Read coordinates
 	for e in gridVertex do
-		regentlib.assert(readCoord(f,coord),"Error in readMesh task. Less coordinates data than it should be. Check grid file.")
+		regentlib.assert(readCoord(f,coord),"Error in readVertex task. Less coordinates data than it should be. Check grid file.")
 		e.id = [uint64](e)
 		e.VX = coord[0]
 		e.VY = coord[1]
@@ -481,17 +526,17 @@ do
 	
 	-- Reads data until EToV info
 	for ii=0, gridNv do
-		regentlib.assert(readCoord(f,coord),"Error in readMesh task. Less coordinates data than it should be. Check grid file.")
+		regentlib.assert(readCoord(f,coord),"Error in readElemToVertex task. Less coordinates data than it should be. Check grid file.")
 	end
 
 	-- Reads data until corresponding partition
 	for ii=0, lowerBound do
-		regentlib.assert(readEToV(f,EToVVal),"Error in readMesh task. Less EToV data than it should be. Check grid file.")
+		regentlib.assert(readEToV(f,EToVVal),"Error in readElemToVertex task. Less EToV data than it should be. Check grid file.")
 	end
 
 	-- Read EToV info
 	for e in gridEToV do
-		regentlib.assert(readEToV(f,EToVVal),"Error in readMesh task. Less EToV data than it should be. Check grid file.")
+		regentlib.assert(readEToV(f,EToVVal),"Error in readElemToVertex task. Less EToV data than it should be. Check grid file.")
 		var v1 = unsafe_cast(ptr(GridVertex, gridVertex), EToVVal[0]-1)
 		var v2 = unsafe_cast(ptr(GridVertex, gridVertex), EToVVal[1]-1)
 		var v3 = unsafe_cast(ptr(GridVertex, gridVertex), EToVVal[2]-1)
@@ -627,41 +672,10 @@ do
 	end
 end
 
-task colorFaces(Nfp : uint64, q : region(ispace(ptr), Elem), qEqual : region(ispace(ptr), Elem), QMFace : region(ispace(ptr), Surface), QPFace : region(ispace(ptr), Surface))
-where
-	reads(q.cellColor, qEqual.cellColor, qEqual.adjQP, qEqual.QPInfo, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor),
-	writes(qEqual.adjQP, QMFace.faceInd, QMFace.faceColor, QPFace.faceInd, QPFace.faceColor)
-do
-	var cellInd	: uint64
-	var colorVal	: uint64
-	var lowerBound	: uint64
-
-	for e in qEqual do
-		lowerBound = [uint64](e)
-		break
-	end
-
-	for e in qEqual do
-		colorVal = e.cellColor
-		QMFace[lowerBound].faceColor= colorVal
-		QMFace[lowerBound].faceInd	= lowerBound
-		QPFace[lowerBound].faceColor= colorVal
-		QPFace[lowerBound].faceInd	= lowerBound
-		for jj=0,3 do
-			cellInd = e.QPInfo[3][jj*Nfp]
-			if not ( colorVal == [uint64](q[cellInd].cellColor) ) then
-				-- Adjacent cell is not in the same partition
-				e.adjQP[jj] = false
-			end
-		end
-		lowerBound = lowerBound + 1
-	end
-end
-
 task buildNodes(p_space : int8, nTimeLev : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)), q : region(ispace(ptr), Elem))
 where
-	reads(q._x,q._y,q.timeLev,q.cellInd,gridVertex.VX,gridVertex.VY,gridEToV.v1,gridEToV.v2, gridEToV.v3),
-	writes(q._x,q._y,q.timeLev)
+	reads(q._x,q._y,q.timeLev,q.factTimeLev,q.factTimeLevRev,q.cellInd,gridVertex.VX,gridVertex.VY,gridEToV.v1,gridEToV.v2, gridEToV.v3),
+	writes(q._x,q._y,q.timeLev,q.factTimeLev,q.factTimeLevRev)
 do
 	var dh			: double = 2.0/p_space
 	var upBound		: uint64
@@ -673,7 +687,7 @@ do
 	var cellNum : uint64
 	var cnt : uint64
 	for e in q do
-		cellNum = q[e].cellInd
+		cellNum = e.cellInd
 		cnt = 0
 		for ii=0,(p_space+1) do
 			sDum = -1.0 + ii*dh
@@ -692,14 +706,21 @@ do
 
 		if ( nTimeLev == 1 ) then
 			e.timeLev = [int1d](0)
+			e.factTimeLev = 1.0
+			e.factTimeLevRev = 1
 		else
+
 			-- Hardcoded time levels for LTS
 			xCenter = (gridVertex[gridEToV[cellNum].v1].VX + gridVertex[gridEToV[cellNum].v2].VX + gridVertex[gridEToV[cellNum].v3].VX)/3
 			yCenter = (gridVertex[gridEToV[cellNum].v1].VY + gridVertex[gridEToV[cellNum].v2].VY + gridVertex[gridEToV[cellNum].v3].VY)/3
 			if ( xCenter < 3.333 ) and ( yCenter < -1.666 ) then
-				e.timeLev = [int1d](1)
-			else
 				e.timeLev = [int1d](0)
+				e.factTimeLev = pow(2.0,1.0) -- 2^(nTimeLev-curTimeLev)
+				e.factTimeLevRev = pow(2,0)
+			else
+				e.timeLev = [int1d](1)
+				e.factTimeLev = pow(2.0,0.0) -- 2^(nTimeLev-curTimeLev)
+				e.factTimeLevRev = pow(2,1)
 			end
 		end
 	end
@@ -722,7 +743,7 @@ do
 
 	var cellNum : uint64
 	for e in q do
-		cellNum = q[e].cellInd
+		cellNum = e.cellInd
 	
 		-- J, rx, sx, ry, sy
 		for jj=0,NpLoc do
@@ -842,10 +863,131 @@ do
 	end
 end
 
+terra readFace(f : &c.FILE, faceInfoVal : &uint64)
+	return c.fscanf(f,"%llu %llu %llu %llu\n",&faceInfoVal[0],&faceInfoVal[1],&faceInfoVal[2],&faceInfoVal[3]) == 4
+end
+
+task readFaceInfo(faceFileName : &int8, face : region(ispace(ptr),surf))
+where
+	reads writes(face.elem0, face.elem1, face.face0, face.face1, face.isDiffTimeLev, face.isElem1Halo, face.faceColorGraph, face.faceColorTime)
+do
+	var faceInfo	: uint64[4]
+	var dummyVal	: uint64[1]
+	var lowerBound  : uint64
+	for e in face do
+		lowerBound = [uint64](e)
+		break
+	end
+
+	var f = c.fopen(faceFileName,"r")
+	readUintVal(f,dummyVal)
+	for ii=0,lowerBound do
+		regentlib.assert(readFace(f,faceInfo),"Error in partitioning info. Check partitioning data file.")
+	end
+	for e in face do
+		regentlib.assert(readFace(f,faceInfo),"Error in partitioning info. Check partitioning data file.")
+		e.elem0			= faceInfo[0]
+		e.elem1			= faceInfo[1]
+		e.face0			= faceInfo[2]
+		e.face1			= faceInfo[3]
+		e.isDiffTimeLev	= false
+		e.isElem1Halo	= false
+		e.faceColorGraph= [int1d](0)
+		e.faceColorTime	= [int1d](0)
+	end
+	c.fclose(f)
+end
+
+task colorFaces(q : region(ispace(ptr), Elem), faceEqual : region(ispace(ptr), surf))
+where
+	reads(q.timeLev, q.cellColor, faceEqual.elem0, faceEqual.elem1, faceEqual.face0, faceEqual.face1, faceEqual.faceColorGraph, faceEqual.faceColorTime, faceEqual.isDiffTimeLev, faceEqual.isElem1Halo),
+	writes(faceEqual.elem0, faceEqual.elem1, faceEqual.face0, faceEqual.face1, faceEqual.faceColorGraph,faceEqual.faceColorTime,faceEqual.isDiffTimeLev, faceEqual.isElem1Halo)
+do
+	var cellInd		: uint64
+	var colorVal	: uint64
+	var lowerBound	: uint64
+	var timeLev0	: uint64
+	var timeLev1	: uint64
+	var sumElemID	: uint64
+	var elemDum		: uint64
+	var faceDum		: uint64
+
+	for e in faceEqual do
+		lowerBound = [uint64](e)
+		break
+	end
+
+	for e in faceEqual do
+		-- Coloring criteria for faces
+		-- 1) A face belongs to a cell which has lower time level
+		-- 2) If both elements are same time level, try to distribute evenly
+		timeLev0 = [uint64](q[e.elem0].timeLev)	
+		timeLev1 = [uint64](q[e.elem1].timeLev)
+
+		-- Check if both elements have the same time level
+		if ( timeLev0 == timeLev1 ) then
+			sumElemID = e.elem0 + e.elem1
+			if ( sumElemID - (sumElemID/2)*2 == 0 ) then
+				e.faceColorGraph= q[e.elem0].cellColor
+			else
+				e.faceColorGraph= q[e.elem1].cellColor
+
+				-- Swap the face info in order to make
+				-- elem0 is the owner of current face
+				elemDum = e.elem0
+				faceDum = e.face0
+
+				e.elem0 = e.elem1
+				e.elem1 = elemDum
+				if ( e.face1 > 9 ) then
+					e.face0 = e.face1/10
+					e.face1 = faceDum*10
+				else
+					e.face0 = e.face1
+					e.face1 = faceDum
+				end
+			end
+			e.faceColorTime = [int1d](timeLev0)
+			if not ( [uint64](q[e.elem0].cellColor) == [uint64](q[e.elem1].cellColor) ) then
+				e.isElem1Halo = true
+			end
+		else
+			-- The time level of both elements differ
+			-- Elements with smaller time level will own this face
+			if ( timeLev0 < timeLev1 ) then
+				e.faceColorGraph= q[e.elem0].cellColor
+				e.faceColorTime	= [int1d](timeLev0)
+			else
+				e.faceColorGraph= q[e.elem1].cellColor
+				e.faceColorTime	= [int1d](timeLev1)
+
+				-- Swap the face info in order to make
+				-- elem0 is the owner of current face
+				elemDum = e.elem0
+				faceDum = e.face0
+
+				e.elem0 = e.elem1
+				e.elem1 = elemDum
+				if ( e.face1 > 9 ) then
+					e.face0 = e.face1/10
+					e.face1 = faceDum*10
+				else
+					e.face0 = e.face1
+					e.face1 = faceDum
+				end
+			end
+			if not ( [uint64](q[e.elem0].cellColor) == [uint64](q[e.elem1].cellColor) ) then
+				e.isElem1Halo = true
+			end
+			e.isDiffTimeLev = true
+		end
+	end
+end
+
 task solutionAtTimeT(time : double, Np : uint64, epsVal : double, rho0Val : double, u0Val : double, v0Val : double, p0Val : double, q : region(ispace(ptr), Elem))
 where
-	reads (q._x, q._y, q.sol, q.cellInd),
-	writes(q.sol)
+	reads (q._x, q._y, q.sol, q.volRes, q.surfRes,q.cellInd),
+	writes(q.sol, q.volRes, q.surfRes)
 do
 	var gamma	: double = 1.4
 	var epsilon	: double = epsVal
@@ -875,7 +1017,7 @@ do
 	end
 
 	for e in q do
-		cellNum = q[e].cellInd
+		cellNum = e.cellInd
 
 		for jj=0,Np do
 			xDis = q[cellNum]._x[jj] - xCenter
@@ -891,13 +1033,23 @@ do
 			q[cellNum].sol[jj].rhou = rho1*u1
 			q[cellNum].sol[jj].rhov = rho1*v1
 			q[cellNum].sol[jj].ener = p1/(gamma-1.0) + 0.5*rho1*(u1*u1+v1*v1)
+
+			-- Initialize volume and surface residuals to zero
+            q[cellNum].volRes[jj].rho = 0.0
+            q[cellNum].volRes[jj].rhou = 0.0
+            q[cellNum].volRes[jj].rhov = 0.0
+            q[cellNum].volRes[jj].ener = 0.0
+            q[cellNum].surfRes[jj].rho = 0.0
+            q[cellNum].surfRes[jj].rhou = 0.0
+            q[cellNum].surfRes[jj].rhov = 0.0
+            q[cellNum].surfRes[jj].ener = 0.0
 		end
 	end
 end
 
 task Euler2DDT(Nfp : int8, p_space : int8, CFL : double, q : region(ispace(ptr), Elem))
 where
-	reads(q.sol, q.Fscale, q.cellInd)
+	reads(q.sol, q.Fscale, q.cellInd, q.factTimeLev)
 do
 	var u		: double
 	var v		: double
@@ -911,7 +1063,7 @@ do
 	var cnt		: uint64
 
     for e in q do
-        cellNum = q[e].cellInd
+        cellNum = e.cellInd
 
 		-- Face 1
 		cnt = 0
@@ -922,7 +1074,7 @@ do
 			p = (gamma-1.0)*( q[cellNum].sol[curDOF].ener - q[cellNum].sol[curDOF].rho*(u*u + v*v)/2.0 )
 			a = sqrt(abs(gamma*p/q[cellNum].sol[curDOF].rho))
 
-			dt = 1.0/( pow((p_space+1.0),2.0)*0.5*q[cellNum].Fscale[cnt]*(sqrt(u*u + v*v) + a) )
+			dt = 1.0/( pow((p_space+1.0),2.0)*0.5*q[cellNum].Fscale[cnt]*(sqrt(u*u + v*v) + a) )*q[cellNum].factTimeLev
 			if dt <= dtOut then
 				dtOut = dt
 			end
@@ -937,7 +1089,7 @@ do
 			p = (gamma-1.0)*( q[cellNum].sol[curDOF].ener - q[cellNum].sol[curDOF].rho*(u*u + v*v)/2.0 )
 			a = sqrt(abs(gamma*p/q[cellNum].sol[curDOF].rho))
 
-			dt = 1.0/( pow((p_space+1.0),2.0)*0.5*q[cellNum].Fscale[cnt]*(sqrt(u*u + v*v) + a) )
+			dt = 1.0/( pow((p_space+1.0),2.0)*0.5*q[cellNum].Fscale[cnt]*(sqrt(u*u + v*v) + a) )*q[cellNum].factTimeLev
 			if dt <= dtOut then
 				dtOut = dt
 			end
@@ -953,7 +1105,7 @@ do
 			p = (gamma-1.0)*( q[cellNum].sol[curDOF].ener - q[cellNum].sol[curDOF].rho*(u*u + v*v)/2.0 )
 			a = sqrt(abs(gamma*p/q[cellNum].sol[curDOF].rho))
 
-			dt = 1.0/( pow((p_space+1.0),2.0)*0.5*q[cellNum].Fscale[cnt]*(sqrt(u*u + v*v) + a) )
+			dt = 1.0/( pow((p_space+1.0),2.0)*0.5*q[cellNum].Fscale[cnt]*(sqrt(u*u + v*v) + a) )*q[cellNum].factTimeLev
 			if dt <= dtOut then
 				dtOut = dt
 			end
@@ -974,7 +1126,7 @@ do
 	var cellNum : uint64
 
 	for e in q do
-		cellNum = q[e].cellInd
+		cellNum = e.cellInd
 		for jj=0,Np do
 			maxRho  = max(maxRho,q[cellNum].sol[jj].rho*thres)
 		end
@@ -993,7 +1145,7 @@ do
 	var cellNum : uint64
 
 	for e in q do
-		cellNum = q[e].cellInd
+		cellNum = e.cellInd
 		for jj=0,Np do
             maxRhou = max(maxRhou,q[cellNum].sol[jj].rhou*thres)
             maxRhov = max(maxRhov,q[cellNum].sol[jj].rhov*thres)
@@ -1013,7 +1165,7 @@ do
 	var cellNum : uint64
 
 	for e in q do
-		cellNum = q[e].cellInd
+		cellNum = e.cellInd
 		for jj=0,Np do
             maxEner = max(maxEner,q[cellNum].sol[jj].ener*thres)
 		end
@@ -1025,7 +1177,7 @@ end
 __demand(__inline)
 task Euler2DPredictor(cellNum : uint64, Np : uint64, Nt : uint64, nSpaceInt : uint64, nTimeInt : uint64, dt : double, tolSolAderRho : double, tolSolAderRhouRhov : double, tolSolAderEner : double, MSpace : region(ispace(int1d), doubleVal), DrSpaceInt : region(ispace(int1d), doubleVal), DsSpaceInt : region(ispace(int1d), doubleVal), wSpaceInt : region(ispace(int1d), doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d), doubleVal), lFirst : region(ispace(int1d), doubleVal), wTimeInt : region(ispace(int1d), doubleVal), DOFToIntTime : region(ispace(int1d), doubleVal), AderIterMat : region(ispace(int1d),doubleVal), q : region(ispace(ptr), Elem), preSolRho : &double, preSolRhou : &double, preSolRhov : &double, preSolEner : &double)
 where
-    reads(MSpace.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, lFirst.v, wTimeInt.v, DOFToIntTime.v, AderIterMat.v, q.sol, q.rxInt, q.sxInt, q.ryInt, q.syInt)
+    reads(MSpace.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, lFirst.v, wTimeInt.v, DOFToIntTime.v, AderIterMat.v, q.sol, q.rxInt, q.sxInt, q.ryInt, q.syInt, q.factTimeLev)
 do
 	var cntTot 			: uint64 = 0
 	var indVal			: uint64
@@ -1256,7 +1408,7 @@ do
 			-- Update the total residual by resInt
 			-- calculated at current temporal integration point
 			for kk=0,Nt do
-				w = 0.5*wTimeInt[jj].v*dt*DOFToIntTime[jj*Nt+kk].v
+				w = 0.5*wTimeInt[jj].v*(dt/q[cellNum].factTimeLev)*DOFToIntTime[jj*Nt+kk].v
 				for ll=0,Np do
 					resTotRho[kk*Np+ll]	-= w*resIntRho[ll]
 					resTotRhou[kk*Np+ll]-= w*resIntRhou[ll]
@@ -1344,213 +1496,6 @@ do
 	end
 end
 
-task Euler2DPredictorWrapper(p_space : int8, Np : uint64, Nt : uint64, nSpaceInt : uint64, nTimeInt : uint64, dt : double, tolSolAderRho : double, tolSolAderRhouRhov : double, tolSolAderEner : double, MSpace : region(ispace(int1d), doubleVal), DrSpaceInt : region(ispace(int1d), doubleVal), DsSpaceInt : region(ispace(int1d), doubleVal), wSpaceInt : region(ispace(int1d), doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d), doubleVal), lFirst : region(ispace(int1d), doubleVal), wTimeInt : region(ispace(int1d), doubleVal), DOFToIntTime : region(ispace(int1d), doubleVal), AderIterMat : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal), q : region(ispace(ptr), Elem), qHalo : region(ispace(ptr),Elem), QMFace : region(ispace(ptr),Surface), QPFace : region(ispace(ptr),Surface))
-where
-    reads(MSpace.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, lFirst.v, wTimeInt.v, DOFToIntTime.v, AderIterMat.v, vmapM.v, q.sol, q.preSol, q.rxInt, q.sxInt, q.ryInt, q.syInt, q.QPInfo, q.adjQP, q.cellInd, qHalo.sol, qHalo.rxInt, qHalo.sxInt, qHalo.ryInt, qHalo.syInt, qHalo.QPInfo, QMFace.rho, QMFace.rhou, QMFace.rhov, QMFace.ener, QPFace.rho, QPFace.rhou, QPFace.rhov, QPFace.ener),
-	writes(q.preSol, QMFace.rho, QMFace.rhou, QMFace.rhov, QMFace.ener, QPFace.rho, QPFace.rhou, QPFace.rhov, QPFace.ener)
-do
-	var cellNum			: uint64
-	var cellNumTemp		: uint64
-	var indVal			: uint64	
-	var preSolRho		: double[220]		-- Np*Nt, Ps=9, Pt=3
-	var preSolRhou		: double[220]		-- Np*Nt
-	var preSolRhov		: double[220]		-- Np*Nt
-	var preSolEner		: double[220]		-- Np*Nt
-	var preSolRhoTemp	: double[220]		-- Np*Nt
-	var preSolRhouTemp	: double[220]		-- Np*Nt
-	var preSolRhovTemp	: double[220]		-- Np*Nt
-	var preSolEnerTemp	: double[220]		-- Np*Nt
-	var solIntRho		: double[55]		-- Np, Ps=9
-	var solIntRhou		: double[55]		-- Np
-	var solIntRhov		: double[55]		-- Np
-	var solIntEner		: double[55]		-- Np
-	var solIntRhoTemp	: double[55]		-- Np
-	var solIntRhouTemp	: double[55]		-- Np
-	var solIntRhovTemp	: double[55]		-- Np
-	var solIntEnerTemp	: double[55]		-- Np
-	var Nfp				: uint64 = p_space+1
-
-	for e in q do
-		cellNum = q[e].cellInd
-		-- Solve predictor solution for this element 
-		Euler2DPredictor(cellNum,Np,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpace,DrSpaceInt,DsSpaceInt,wSpaceInt,DOFToIntSpaceTranspose,lFirst,wTimeInt,DOFToIntTime,AderIterMat,q,preSolRho,preSolRhou,preSolRhov,preSolEner)
-
-		-- Save predictor solutions
-		for ii=0,Np*Nt do
-			q[cellNum].preSol[ii].rho  = preSolRho[ii] 
-			q[cellNum].preSol[ii].rhou = preSolRhou[ii]
-			q[cellNum].preSol[ii].rhov = preSolRhov[ii]
-			q[cellNum].preSol[ii].ener = preSolEner[ii]
-		end
-
-		---- Surface Traces
-		-- Interpolate the predictor solution to the current temporal integration point
-		for ii=0,nTimeInt do
-			for kk=0,Np do
-				solIntRho[kk]  = 0.0
-				solIntRhou[kk] = 0.0
-				solIntRhov[kk] = 0.0
-				solIntEner[kk] = 0.0
-			end
-			indVal = 0
-			for kk=0,Nt do
-				for ll=0,Np do
-					solIntRho[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRho[indVal] 
-					solIntRhou[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhou[indVal]
-					solIntRhov[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhov[indVal]
-					solIntEner[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolEner[indVal]
-					indVal = indVal + 1
-				end
-			end
-
-			-- Store QM and QP Info for surface residuals
-			-- Sweep 1
-			for kk=0,Nfp do
-				QMFace[cellNum].rho[ii][kk]	= solIntRho[vmapM[kk].v]
-				QMFace[cellNum].rhou[ii][kk]= solIntRhou[vmapM[kk].v]
-				QMFace[cellNum].rhov[ii][kk]= solIntRhov[vmapM[kk].v]
-				QMFace[cellNum].ener[ii][kk]= solIntEner[vmapM[kk].v]
-				if ( q[cellNum].adjQP[0] ) then  -- Target cell is in the same partition
-					QPFace[q[cellNum].QPInfo[3][kk]].rho[ii][q[cellNum].QPInfo[2][kk]]	= solIntRho[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].rhou[ii][q[cellNum].QPInfo[2][kk]]	= solIntRhou[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].rhov[ii][q[cellNum].QPInfo[2][kk]]	= solIntRhov[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].ener[ii][q[cellNum].QPInfo[2][kk]]	= solIntEner[q[cellNum].QPInfo[0][kk]]
-				end
-			end
-
-			-- Sweep 2
-			for kk=Nfp,2*Nfp do
-				QMFace[cellNum].rho[ii][kk]	= solIntRho[vmapM[kk].v]
-				QMFace[cellNum].rhou[ii][kk]= solIntRhou[vmapM[kk].v]
-				QMFace[cellNum].rhov[ii][kk]= solIntRhov[vmapM[kk].v]
-				QMFace[cellNum].ener[ii][kk]= solIntEner[vmapM[kk].v]
-				if ( q[cellNum].adjQP[1] ) then  -- Target cell is in the same partition 
-					QPFace[q[cellNum].QPInfo[3][kk]].rho[ii][q[cellNum].QPInfo[2][kk]] = solIntRho[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].rhou[ii][q[cellNum].QPInfo[2][kk]] = solIntRhou[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].rhov[ii][q[cellNum].QPInfo[2][kk]] = solIntRhov[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].ener[ii][q[cellNum].QPInfo[2][kk]] = solIntEner[q[cellNum].QPInfo[0][kk]]
-				end
-			end
-
-			-- Sweep 3
-			for kk=2*Nfp,3*Nfp do
-				QMFace[cellNum].rho[ii][kk]	= solIntRho[vmapM[kk].v]
-				QMFace[cellNum].rhou[ii][kk]= solIntRhou[vmapM[kk].v]
-				QMFace[cellNum].rhov[ii][kk]= solIntRhov[vmapM[kk].v]
-				QMFace[cellNum].ener[ii][kk]= solIntEner[vmapM[kk].v]
-				if ( q[cellNum].adjQP[2] ) then  -- Target cell is in the same partition
-					QPFace[q[cellNum].QPInfo[3][kk]].rho[ii][q[cellNum].QPInfo[2][kk]]	= solIntRho[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].rhou[ii][q[cellNum].QPInfo[2][kk]]	= solIntRhou[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].rhov[ii][q[cellNum].QPInfo[2][kk]]	= solIntRhov[q[cellNum].QPInfo[0][kk]]
-					QPFace[q[cellNum].QPInfo[3][kk]].ener[ii][q[cellNum].QPInfo[2][kk]]	= solIntEner[q[cellNum].QPInfo[0][kk]]
-				end
-			end
-		end
-
-		if not ( q[cellNum].adjQP[0] ) then	-- Target cell is not in the same partition. Need to do other work
-			cellNumTemp = q[cellNum].QPInfo[3][0*Nfp]
-			Euler2DPredictor(cellNumTemp,Np,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpace,DrSpaceInt,DsSpaceInt,wSpaceInt,DOFToIntSpaceTranspose,lFirst,wTimeInt,DOFToIntTime,AderIterMat,qHalo,preSolRhoTemp,preSolRhouTemp,preSolRhovTemp,preSolEnerTemp)
-
-			for ii=0,nTimeInt do			
-				for kk=0,Np do
-					solIntRhoTemp[kk]  = 0.0
-					solIntRhouTemp[kk] = 0.0
-					solIntRhovTemp[kk] = 0.0
-					solIntEnerTemp[kk] = 0.0
-				end
-	
-				indVal = 0
-				for kk=0,Nt do
-					for ll=0,Np do
-						solIntRhoTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhoTemp[indVal]
-						solIntRhouTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhouTemp[indVal]
-						solIntRhovTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhovTemp[indVal]
-						solIntEnerTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolEnerTemp[indVal]
-						indVal = indVal + 1
-					end
-				end
-
-				for kk=0,3*Nfp do
-					if ( qHalo[cellNumTemp].QPInfo[3][kk] == cellNum ) then
-						QPFace[cellNum].rho[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhoTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].rhou[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhouTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].rhov[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhovTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].ener[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntEnerTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-					end
-				end
-			end
-		end
-
-		if not ( q[cellNum].adjQP[1] ) then	-- Target cell is not in the same partition. Need to do other work
-			cellNumTemp = q[cellNum].QPInfo[3][1*Nfp]
-			Euler2DPredictor(cellNumTemp,Np,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpace,DrSpaceInt,DsSpaceInt,wSpaceInt,DOFToIntSpaceTranspose,lFirst,wTimeInt,DOFToIntTime,AderIterMat,qHalo,preSolRhoTemp,preSolRhouTemp,preSolRhovTemp,preSolEnerTemp)
-
-			for ii=0,nTimeInt do
-				for kk=0,Np do
-					solIntRhoTemp[kk]  = 0.0
-					solIntRhouTemp[kk] = 0.0
-					solIntRhovTemp[kk] = 0.0
-					solIntEnerTemp[kk] = 0.0
-				end
-	
-				indVal = 0
-				for kk=0,Nt do
-					for ll=0,Np do
-						solIntRhoTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhoTemp[indVal]
-						solIntRhouTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhouTemp[indVal]
-						solIntRhovTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhovTemp[indVal]
-						solIntEnerTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolEnerTemp[indVal]
-						indVal = indVal + 1
-					end
-				end
-
-				for kk=0,3*Nfp do
-					if ( qHalo[cellNumTemp].QPInfo[3][kk] == cellNum ) then
-						QPFace[cellNum].rho[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhoTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].rhou[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhouTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].rhov[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhovTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].ener[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntEnerTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-					end
-				end
-			end
-		end
-
-		if not ( q[cellNum].adjQP[2] ) then	-- Target cell is not in the same partition. Need to do other work
-			cellNumTemp = q[cellNum].QPInfo[3][2*Nfp]
-			Euler2DPredictor(cellNumTemp,Np,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpace,DrSpaceInt,DsSpaceInt,wSpaceInt,DOFToIntSpaceTranspose,lFirst,wTimeInt,DOFToIntTime,AderIterMat,qHalo,preSolRhoTemp,preSolRhouTemp,preSolRhovTemp,preSolEnerTemp)
-
-			for ii=0,nTimeInt do	
-				for kk=0,Np do
-					solIntRhoTemp[kk]  = 0.0
-					solIntRhouTemp[kk] = 0.0
-					solIntRhovTemp[kk] = 0.0
-					solIntEnerTemp[kk] = 0.0
-				end
-	
-				indVal = 0
-				for kk=0,Nt do
-					for ll=0,Np do
-						solIntRhoTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhoTemp[indVal]
-						solIntRhouTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhouTemp[indVal]
-						solIntRhovTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolRhovTemp[indVal]
-						solIntEnerTemp[ll]	+= DOFToIntTime[ii*Nt+kk].v*preSolEnerTemp[indVal]
-						indVal = indVal + 1
-					end
-				end
-
-				for kk=0,3*Nfp do
-					if ( qHalo[cellNumTemp].QPInfo[3][kk] == cellNum ) then
-						QPFace[cellNum].rho[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhoTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].rhou[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhouTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].rhov[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntRhovTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-						QPFace[cellNum].ener[ii][qHalo[cellNumTemp].QPInfo[2][kk]]	= solIntEnerTemp[qHalo[cellNumTemp].QPInfo[0][kk]]
-					end
-				end
-			end
-		end
-	end
-end
-
 terra Euler2DFluxes(Np : uint64, F1 : &double, F2 : &double, F3 : &double, F4 : &double, G1 : &double, G2 : &double, G3 : &double, G4 : &double, intSolRho : &double, intSolRhou : &double, intSolRhov : &double, intSolEner : &double)
 	var u : double
 	var v : double
@@ -1575,45 +1520,45 @@ terra Euler2DFluxes(Np : uint64, F1 : &double, F2 : &double, F3 : &double, F4 : 
 end
 
 __demand(__inline)
-task Euler2DLF(cellInd : uint64, p_space : int8, F1 : &double, F2 : &double, F3 : &double, F4 : &double, nx : &double, ny : &double, QMRho : &double, QMRhou : &double, QMRhov : &double, QMEner : &double, QPRho : &double, QPRhou : &double, QPRhov : &double, QPEner : &double)
+task Euler2DLF(cellInd : uint64, p_space : int8, lB : uint64, F1 : &double, F2 : &double, F3 : &double, F4 : &double, nx : &double, ny : &double, QMRho : &double, QMRhou : &double, QMRhov : &double, QMEner : &double, QPRho : &double, QPRhou : &double, QPRhov : &double, QPEner : &double)
 	var maxVelCand : double
 	var maxVelTemp : double
 	var gamma	: double = 1.4
 	var Nfp		: uint64 = p_space+1 
-	var maxVel	: double[30]	-- Nfaces*Nfp, Ps=9
-	var rhoM	: double[30]	-- Nfaces*Nfp
-	var rhouM	: double[30]	-- Nfaces*Nfp
-	var rhovM	: double[30]	-- Nfaces*Nfp
-	var enerM	: double[30]	-- Nfaces*Nfp
-	var uM		: double[30]	-- Nfaces*Nfp
-	var vM		: double[30]	-- Nfaces*Nfp
-	var pM		: double[30]	-- Nfaces*Nfp
-    var rhoP    : double[30]	-- Nfaces*Nfp
-    var rhouP   : double[30]	-- Nfaces*Nfp
-    var rhovP   : double[30]	-- Nfaces*Nfp
-    var enerP   : double[30]	-- Nfaces*Nfp
-	var uP		: double[30]	-- Nfaces*Nfp
-	var vP		: double[30]	-- Nfaces*Nfp
-	var pP		: double[30]	-- Nfaces*Nfp
+	var maxVel	: double[10]	-- Nfp, Ps=9
+	var rhoM	: double[10]	-- Nfp
+	var rhouM	: double[10]	-- Nfp
+	var rhovM	: double[10]	-- Nfp
+	var enerM	: double[10]	-- Nfp
+	var uM		: double[10]	-- Nfp
+	var vM		: double[10]	-- Nfp
+	var pM		: double[10]	-- Nfp
+    var rhoP    : double[10]	-- Nfp
+    var rhouP   : double[10]	-- Nfp
+    var rhovP   : double[10]	-- Nfp
+    var enerP   : double[10]	-- Nfp
+	var uP		: double[10]	-- Nfp
+	var vP		: double[10]	-- Nfp
+	var pP		: double[10]	-- Nfp
 
-	var F1M		: double[30]	-- Nfaces*Nfp
-    var F2M		: double[30]	-- Nfaces*Nfp
-    var F3M		: double[30]	-- Nfaces*Nfp
-    var F4M		: double[30]	-- Nfaces*Nfp
-    var G1M		: double[30]	-- Nfaces*Nfp
-    var G2M		: double[30]	-- Nfaces*Nfp
-    var G3M		: double[30]	-- Nfaces*Nfp
-    var G4M		: double[30]	-- Nfaces*Nfp
-    var F1P     : double[30]	-- Nfaces*Nfp
-    var F2P     : double[30]	-- Nfaces*Nfp
-    var F3P     : double[30]	-- Nfaces*Nfp
-    var F4P     : double[30]	-- Nfaces*Nfp
-    var G1P     : double[30]	-- Nfaces*Nfp
-    var G2P     : double[30]	-- Nfaces*Nfp
-    var G3P     : double[30]	-- Nfaces*Nfp
-    var G4P     : double[30]	-- Nfaces*Nfp
+	var F1M		: double[10]	-- Nfp
+    var F2M		: double[10]	-- Nfp
+    var F3M		: double[10]	-- Nfp
+    var F4M		: double[10]	-- Nfp
+    var G1M		: double[10]	-- Nfp
+    var G2M		: double[10]	-- Nfp
+    var G3M		: double[10]	-- Nfp
+    var G4M		: double[10]	-- Nfp
+    var F1P     : double[10]	-- Nfp
+    var F2P     : double[10]	-- Nfp
+    var F3P     : double[10]	-- Nfp
+    var F4P     : double[10]	-- Nfp
+    var G1P     : double[10]	-- Nfp
+    var G2P     : double[10]	-- Nfp
+    var G3P     : double[10]	-- Nfp
+    var G4P     : double[10]	-- Nfp
 
-	for ii=0,3*Nfp do
+	for ii=0,Nfp do
 		rhoM[ii]  = QMRho[ii]
 		rhouM[ii] = QMRhou[ii]
         rhovM[ii] = QMRhov[ii]
@@ -1632,34 +1577,416 @@ task Euler2DLF(cellInd : uint64, p_space : int8, F1 : &double, F2 : &double, F3 
 	end
 
 	-- Compute fluxes
-	Euler2DFluxes(3*Nfp,F1M,F2M,F3M,F4M,G1M,G2M,G3M,G4M,rhoM,rhouM,rhovM,enerM)
-	Euler2DFluxes(3*Nfp,F1P,F2P,F3P,F4P,G1P,G2P,G3P,G4P,rhoP,rhouP,rhovP,enerP)
+	Euler2DFluxes(Nfp,F1M,F2M,F3M,F4M,G1M,G2M,G3M,G4M,rhoM,rhouM,rhovM,enerM)
+	Euler2DFluxes(Nfp,F1P,F2P,F3P,F4P,G1P,G2P,G3P,G4P,rhoP,rhouP,rhovP,enerP)
 
 	-- Compute wave speed for Lax-Friedrichs(Rusanov) numerical fluxes
-	for ii=0,3 do
-		maxVelCand = 0.0
-		for jj=0,Nfp do
-			maxVelTemp = max( (sqrt(uM[ii*Nfp+jj]*uM[ii*Nfp+jj]+vM[ii*Nfp+jj]*vM[ii*Nfp+jj])+sqrt(abs(gamma*pM[ii*Nfp+jj]/rhoM[ii*Nfp+jj]))) , (sqrt(uP[ii*Nfp+jj]*uP[ii*Nfp+jj]+vP[ii*Nfp+jj]*vP[ii*Nfp+jj])+sqrt(abs(gamma*pP[ii*Nfp+jj]/rhoP[ii*Nfp+jj]))) )
-			maxVelCand = max(maxVelCand,maxVelTemp)
-		end
-		for jj=0,Nfp do
-			maxVel[ii*Nfp+jj] = maxVelCand
-		end
+	maxVelCand = 0.0
+	for jj=0,Nfp do
+		maxVelTemp = max( (sqrt(uM[jj]*uM[jj]+vM[jj]*vM[jj])+sqrt(abs(gamma*pM[jj]/rhoM[jj]))) , (sqrt(uP[jj]*uP[jj]+vP[jj]*vP[jj])+sqrt(abs(gamma*pP[jj]/rhoP[jj]))) )
+		maxVelCand = max(maxVelCand,maxVelTemp)
+	end
+	for jj=0,Nfp do
+		maxVel[jj] = maxVelCand
 	end
 
 	-- Form LF fluxes
-	for ii=0,3*Nfp do
-		F1[ii] = 0.5*( nx[ii]*(F1P[ii]+F1M[ii]) + ny[ii]*(G1P[ii]+G1M[ii]) + maxVel[ii]*(rhoM[ii]-rhoP[ii]))
-		F2[ii] = 0.5*( nx[ii]*(F2P[ii]+F2M[ii]) + ny[ii]*(G2P[ii]+G2M[ii]) + maxVel[ii]*(rhouM[ii]-rhouP[ii]))
-		F3[ii] = 0.5*( nx[ii]*(F3P[ii]+F3M[ii]) + ny[ii]*(G3P[ii]+G3M[ii]) + maxVel[ii]*(rhovM[ii]-rhovP[ii]))
-		F4[ii] = 0.5*( nx[ii]*(F4P[ii]+F4M[ii]) + ny[ii]*(G4P[ii]+G4M[ii]) + maxVel[ii]*(enerM[ii]-enerP[ii]))
+	for ii=0,Nfp do
+		F1[ii] = 0.5*( nx[lB+ii]*(F1P[ii]+F1M[ii]) + ny[lB+ii]*(G1P[ii]+G1M[ii]) + maxVel[ii]*(rhoM[ii]-rhoP[ii]))
+		F2[ii] = 0.5*( nx[lB+ii]*(F2P[ii]+F2M[ii]) + ny[lB+ii]*(G2P[ii]+G2M[ii]) + maxVel[ii]*(rhouM[ii]-rhouP[ii]))
+		F3[ii] = 0.5*( nx[lB+ii]*(F3P[ii]+F3M[ii]) + ny[lB+ii]*(G3P[ii]+G3M[ii]) + maxVel[ii]*(rhovM[ii]-rhovP[ii]))
+		F4[ii] = 0.5*( nx[lB+ii]*(F4P[ii]+F4M[ii]) + ny[lB+ii]*(G4P[ii]+G4M[ii]) + maxVel[ii]*(enerM[ii]-enerP[ii]))
 	end
 end
 
-task Euler2DCorrector(p_space : int8, Np : uint64, Nt : uint64, nTimeInt : uint64, Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), q : region(ispace(ptr),Elem), QMFace : region(ispace(ptr),Surface), QPFace : region(ispace(ptr),Surface))
+task Euler2DPredictorWrapper(ltsLevel : uint8, Np : uint64, Nt : uint64, nSpaceInt : uint64, nTimeInt : uint64, dt : double, tolSolAderRho : double, tolSolAderRhouRhov : double, tolSolAderEner : double, MSpace : region(ispace(int1d), doubleVal), DrSpaceInt : region(ispace(int1d), doubleVal), DsSpaceInt : region(ispace(int1d), doubleVal), wSpaceInt : region(ispace(int1d), doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d), doubleVal), lFirst : region(ispace(int1d), doubleVal), wTimeInt : region(ispace(int1d), doubleVal), DOFToIntTime : region(ispace(int1d), doubleVal), AderIterMat : region(ispace(int1d),doubleVal), q : region(ispace(ptr), Elem)) 
 where
-	reads(Drw.v, Dsw.v, LIFT.v, wTimeInt.v, DOFToIntTime.v, q.cellInd, q.volRes, q.surfRes, q.preSol, q.rx, q.sx, q.ry, q.sy, q.nx, q.ny, q.Fscale, q.QPInfo, QMFace.rho, QMFace.rhou, QMFace.rhov, QMFace.ener, QPFace.rho, QPFace.rhou, QPFace.rhov, QPFace.ener),
-	writes(q.volRes, q.surfRes)
+    reads(MSpace.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, lFirst.v, wTimeInt.v, DOFToIntTime.v, AderIterMat.v, q.sol, q.preSol, q.cellInd, q.rxInt, q.sxInt, q.ryInt, q.syInt, q.factTimeLev, q.factTimeLevRev),
+	writes(q.preSol) 
+do
+	var cellNum			: uint64
+	var preSolRho		: double[220]		-- Np*Nt, Ps=9, Pt=3
+	var preSolRhou		: double[220]		-- Np*Nt
+	var preSolRhov		: double[220]		-- Np*Nt
+	var preSolEner		: double[220]		-- Np*Nt
+	var elem0Cont		: int8
+
+	-- Note that predictor step occurs
+	-- 1) Always for timeLev == 0
+	-- 2) mod(ltsLevel,2^timeLev) == 0
+	for e in q do
+		cellNum	= e.cellInd
+		elem0Cont = (ltsLevel/q[cellNum].factTimeLevRev)*q[cellNum].factTimeLevRev-ltsLevel
+		if ( elem0Cont == 0 ) then
+			-- Solve predictor solution for this element 
+			Euler2DPredictor(cellNum,Np,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpace,DrSpaceInt,DsSpaceInt,wSpaceInt,DOFToIntSpaceTranspose,lFirst,wTimeInt,DOFToIntTime,AderIterMat,q,preSolRho,preSolRhou,preSolRhov,preSolEner)
+
+			-- Save predictor solutions
+			for ii=0,Np*Nt do
+				q[cellNum].preSol[ii].rho  = preSolRho[ii] 
+				q[cellNum].preSol[ii].rhou = preSolRhou[ii]
+				q[cellNum].preSol[ii].rhov = preSolRhov[ii]
+				q[cellNum].preSol[ii].ener = preSolEner[ii]
+			end
+		end
+	end
+end
+
+task residualSurfaceOwned(ltsLevel : uint8, p_space : uint64, Np : uint64, Nt : uint64, nTimeInt : uint64, wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), DOFToIntAdjTime : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal), q : region(ispace(ptr),Elem), face : region(ispace(ptr),surf) )
+where
+	reads(wTimeInt.v, DOFToIntTime.v, DOFToIntAdjTime.v, LIFT.v, vmapM.v, q.preSol, q.nx, q.ny, q.Fscale, q.surfRes, q.factTimeLevRev, face.elem0, face.elem1, face.face0, face.face1, face.isElem1Halo, face.isDiffTimeLev),
+	writes(q.surfRes) 
+do
+	var indVal			: uint64
+	var indValGrad		: int8
+	var isFlipped		: bool
+	var lB0				: uint64
+	var uB0				: uint64
+	var lB1				: uint64
+	var uB1				: uint64
+	var solIntRho0		: double[55]		-- Np, Ps=9
+	var solIntRhou0		: double[55]		-- Np
+	var solIntRhov0		: double[55]		-- Np
+	var solIntEner0		: double[55]		-- Np
+	var solIntRho1		: double[55]		-- Np
+	var solIntRhou1		: double[55]		-- Np
+	var solIntRhov1		: double[55]		-- Np
+	var solIntEner1		: double[55]		-- Np
+	var QMRho			: double[10]		-- Nfp, Ps=9
+	var QMRhou			: double[10]		-- Nfp
+	var QMRhov			: double[10]		-- Nfp
+	var QMEner			: double[10]		-- Nfp
+	var QPRho			: double[10]		-- Nfp
+	var QPRhou			: double[10]		-- Nfp
+	var QPRhov			: double[10]		-- Nfp
+	var QPEner			: double[10]		-- Nfp
+	var F1s				: double[10]		-- Nfp, Ps=9
+	var F2s				: double[10]		-- Nfp
+	var F3s				: double[10]		-- Nfp
+	var F4s				: double[10]		-- Nfp
+	var halfWeight		: double
+	var quartWeight		: double
+	var tempValRho		: double
+	var tempValRhou		: double
+	var tempValRhov		: double
+	var tempValEner		: double
+	var w				: double = 0.5
+	var Nfp				: uint64 = p_space+1
+	var NfpSum			: uint64 = 3*Nfp
+	var nTimeIntNt		: uint64 = nTimeInt*Nt
+	var cellNum			: uint64
+	var elem0Cont		: int8
+	var elem1Cont		: int8
+	var isSecond		: int8
+
+
+	for e in face do
+		if not ( e.isElem1Halo ) then
+			-- Elem0 and Elem1 are in the same graph partition
+			-- Now we may have two cases where
+			-- 1) Both elements are same time level or
+			-- 2) Elem1 has higher time level
+			-- For both cases, we need to calculate surface 
+			-- residual contribution of current face based on
+			-- ltsLevel and factTimeLev value.
+			-- For example, for three time level case
+			--                   ltsLevel
+			--             0      1      2      3
+			-- ------------------------------------
+			-- timeLev0    O      O      O      O
+			-- timeLev1    X      O      X      O
+			-- timeLev2    X      X      X      O
+
+			elem0Cont = ((ltsLevel+1)/q[e.elem0].factTimeLevRev)*q[e.elem0].factTimeLevRev-(ltsLevel+1)
+			if ( elem0Cont == 0 ) then
+				elem1Cont = ((ltsLevel+1)/q[e.elem1].factTimeLevRev)*q[e.elem1].factTimeLevRev-(ltsLevel+1)
+
+				-- 1) Both elements are same time level
+				if not ( e.isDiffTimeLev ) then
+					cellNum = e.elem0
+
+					-- Determine face orientation
+					lB0 = (e.face0-1)*Nfp
+					uB0 = e.face0*Nfp
+					isFlipped = false
+					indValGrad = 1
+					if ( e.face1 > 9 ) then
+						-- Elem1 side is flipped
+						lB1 = (e.face1/10-1)*Nfp
+						uB1 = e.face1*Nfp/10
+						isFlipped = true
+					else
+						lB1 = (e.face1-1)*Nfp
+						uB1 = e.face1*Nfp
+					end
+
+					for ii=0,nTimeInt do
+						-- Temporal weight for surface residual calculation
+						halfWeight = 0.5*wTimeInt[ii].v
+
+						-- Interpolate predictor solution of elem0
+						for kk=0,Np do
+							solIntRho0[kk]	= 0.0
+							solIntRhou0[kk]	= 0.0
+							solIntRhov0[kk]	= 0.0
+							solIntEner0[kk]	= 0.0
+						end
+						indVal = 0
+						for kk=0,Nt do
+							for ll=0,Np do
+								solIntRho0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rho
+								solIntRhou0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rhou
+								solIntRhov0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rhov
+								solIntEner0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].ener
+								indVal = indVal + 1
+							end
+						end
+
+						-- Assign QM values
+						indVal = 0
+						for kk=lB0,uB0 do
+							QMRho[indVal]	= solIntRho0[vmapM[kk].v]
+							QMRhou[indVal]	= solIntRhou0[vmapM[kk].v]
+							QMRhov[indVal]	= solIntRhov0[vmapM[kk].v]
+							QMEner[indVal]	= solIntEner0[vmapM[kk].v]
+							indVal = indVal + 1
+						end
+        
+						-- Interpolate predictor solution of elem1
+						for kk=0,Np do
+							solIntRho1[kk]	= 0.0
+							solIntRhou1[kk]	= 0.0
+							solIntRhov1[kk]	= 0.0
+							solIntEner1[kk]	= 0.0
+						end
+						indVal = 0
+						for kk=0,Nt do
+							for ll=0,Np do
+								solIntRho1[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem1].preSol[indVal].rho
+								solIntRhou1[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem1].preSol[indVal].rhou
+								solIntRhov1[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem1].preSol[indVal].rhov
+								solIntEner1[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem1].preSol[indVal].ener
+								indVal = indVal + 1
+							end
+						end
+
+						-- Assign QP values 
+						indVal = 0
+						indValGrad = 1
+						if ( isFlipped ) then
+							indVal = Nfp-1
+							indValGrad = -1						
+						end
+    
+						for kk=lB1,uB1 do
+							QPRho[indVal]	= solIntRho1[vmapM[kk].v]
+							QPRhou[indVal]	= solIntRhou1[vmapM[kk].v]
+							QPRhov[indVal]	= solIntRhov1[vmapM[kk].v]
+							QPEner[indVal]	= solIntEner1[vmapM[kk].v]
+							indVal = indVal + indValGrad
+						end
+        
+						-- Calculate surface fluxes
+						Euler2DLF(cellNum, p_space, lB0, F1s, F2s, F3s, F4s, q[cellNum].nx, q[cellNum].ny, QMRho, QMRhou, QMRhov, QMEner, QPRho, QPRhou, QPRhov, QPEner)
+
+						-- Update elem0 surface residual
+						for kk=0,Np do
+							tempValRho	= 0.0
+							tempValRhou	= 0.0
+							tempValRhov	= 0.0
+							tempValEner	= 0.0
+							indVal = 0
+							for ll=lB0,uB0 do
+								tempValRho	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F1s[indVal]
+								tempValRhou	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F2s[indVal]
+								tempValRhov	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F3s[indVal]
+								tempValEner	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F4s[indVal]
+								indVal = indVal + 1 
+							end
+            
+							q[e.elem0].surfRes[kk].rho	+= (halfWeight*tempValRho)
+							q[e.elem0].surfRes[kk].rhou	+= (halfWeight*tempValRhou)
+							q[e.elem0].surfRes[kk].rhov	+= (halfWeight*tempValRhov)
+							q[e.elem0].surfRes[kk].ener	+= (halfWeight*tempValEner)
+						end
+
+						-- Update elem1 surface residual
+						for kk=0,Np do
+							tempValRho	= 0.0
+							tempValRhou	= 0.0
+							tempValRhov	= 0.0
+							tempValEner	= 0.0
+							indVal = 0
+							indValGrad = 1
+							if ( isFlipped ) then
+								indVal = Nfp-1
+								indValGrad = -1						
+							end
+							for ll=lB1,uB1 do
+								-- Note that signs are flipped compared to elem0
+								tempValRho	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F1s[indVal]
+								tempValRhou	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F2s[indVal]
+								tempValRhov	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F3s[indVal]
+								tempValEner	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F4s[indVal]
+								indVal = indVal + indValGrad
+							end
+							q[e.elem1].surfRes[kk].rho	+= (halfWeight*tempValRho)
+							q[e.elem1].surfRes[kk].rhou	+= (halfWeight*tempValRhou)
+							q[e.elem1].surfRes[kk].rhov	+= (halfWeight*tempValRhov)
+							q[e.elem1].surfRes[kk].ener	+= (halfWeight*tempValEner)
+						end
+					end
+				-- 2) Elem1 has higher time level
+				else
+					cellNum = e.elem0
+					if ( elem1Cont == 0 ) then
+						isSecond = 1
+					else
+						isSecond = 0
+					end
+
+					-- Determine face orientation
+					lB0 = (e.face0-1)*Nfp
+					uB0 = e.face0*Nfp
+					isFlipped = false
+					indValGrad = 1
+					if ( e.face1 > 9 ) then
+						-- Elem1 side is flipped
+						lB1 = (e.face1/10-1)*Nfp
+						uB1 = e.face1*Nfp/10
+						isFlipped = true
+					else
+						lB1 = (e.face1-1)*Nfp
+						uB1 = e.face1*Nfp
+					end
+
+					for ii=0,nTimeInt do
+						-- Temporal weight for surface residual calculation
+						halfWeight = 0.5*wTimeInt[ii].v
+						quartWeight = 0.25*wTimeInt[ii].v
+
+						-- Interpolate predictor solution of elem0
+						for kk=0,Np do
+							solIntRho0[kk]	= 0.0
+							solIntRhou0[kk]	= 0.0
+							solIntRhov0[kk]	= 0.0
+							solIntEner0[kk]	= 0.0
+						end
+						indVal = 0
+						for kk=0,Nt do
+							for ll=0,Np do
+								solIntRho0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rho
+								solIntRhou0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rhou
+								solIntRhov0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rhov
+								solIntEner0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].ener
+								indVal = indVal + 1
+							end
+						end
+
+						-- Assign QM values
+						indVal = 0
+						for kk=lB0,uB0 do
+							QMRho[indVal]	= solIntRho0[vmapM[kk].v]
+							QMRhou[indVal]	= solIntRhou0[vmapM[kk].v]
+							QMRhov[indVal]	= solIntRhov0[vmapM[kk].v]
+							QMEner[indVal]	= solIntEner0[vmapM[kk].v]
+							indVal = indVal + 1
+						end
+        
+						-- Interpolate predictor solution of elem1
+						for kk=0,Np do
+							solIntRho1[kk]	= 0.0
+							solIntRhou1[kk]	= 0.0
+							solIntRhov1[kk]	= 0.0
+							solIntEner1[kk]	= 0.0
+						end
+						indVal = 0
+						for kk=0,Nt do
+							for ll=0,Np do
+								solIntRho1[ll]	+= DOFToIntAdjTime[ii*Nt+isSecond*nTimeIntNt+kk].v*q[e.elem1].preSol[indVal].rho
+								solIntRhou1[ll]	+= DOFToIntAdjTime[ii*Nt+isSecond*nTimeIntNt+kk].v*q[e.elem1].preSol[indVal].rhou
+								solIntRhov1[ll]	+= DOFToIntAdjTime[ii*Nt+isSecond*nTimeIntNt+kk].v*q[e.elem1].preSol[indVal].rhov
+								solIntEner1[ll]	+= DOFToIntAdjTime[ii*Nt+isSecond*nTimeIntNt+kk].v*q[e.elem1].preSol[indVal].ener
+								indVal = indVal + 1
+							end
+						end
+
+						-- Assign QP values 
+						indVal = 0
+						indValGrad = 1
+						if ( isFlipped ) then
+							indVal = Nfp-1
+							indValGrad = -1						
+						end
+    
+						for kk=lB1,uB1 do
+							QPRho[indVal]	= solIntRho1[vmapM[kk].v]
+							QPRhou[indVal]	= solIntRhou1[vmapM[kk].v]
+							QPRhov[indVal]	= solIntRhov1[vmapM[kk].v]
+							QPEner[indVal]	= solIntEner1[vmapM[kk].v]
+							indVal = indVal + indValGrad
+						end
+        
+						-- Calculate surface fluxes
+						Euler2DLF(cellNum, p_space, lB0, F1s, F2s, F3s, F4s, q[cellNum].nx, q[cellNum].ny, QMRho, QMRhou, QMRhov, QMEner, QPRho, QPRhou, QPRhov, QPEner)
+
+						-- Update elem0 surface residual
+						for kk=0,Np do
+							tempValRho	= 0.0
+							tempValRhou	= 0.0
+							tempValRhov	= 0.0
+							tempValEner	= 0.0
+							indVal = 0
+							for ll=lB0,uB0 do
+								tempValRho	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F1s[indVal]
+								tempValRhou	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F2s[indVal]
+								tempValRhov	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F3s[indVal]
+								tempValEner	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F4s[indVal]
+								indVal = indVal + 1 
+							end
+            
+							q[e.elem0].surfRes[kk].rho	+= (halfWeight*tempValRho)
+							q[e.elem0].surfRes[kk].rhou	+= (halfWeight*tempValRhou)
+							q[e.elem0].surfRes[kk].rhov	+= (halfWeight*tempValRhov)
+							q[e.elem0].surfRes[kk].ener	+= (halfWeight*tempValEner)
+						end
+
+						-- Update elem1 surface residual
+						for kk=0,Np do
+							tempValRho	= 0.0
+							tempValRhou	= 0.0
+							tempValRhov	= 0.0
+							tempValEner	= 0.0
+							indVal = 0
+							indValGrad = 1
+							if ( isFlipped ) then
+								indVal = Nfp-1
+								indValGrad = -1						
+							end
+							for ll=lB1,uB1 do
+								-- Note that signs are flipped compared to elem0
+								tempValRho	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F1s[indVal]
+								tempValRhou	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F2s[indVal]
+								tempValRhov	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F3s[indVal]
+								tempValEner	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F4s[indVal]
+								indVal = indVal + indValGrad
+							end
+							q[e.elem1].surfRes[kk].rho	+= (quartWeight*tempValRho)
+							q[e.elem1].surfRes[kk].rhou	+= (quartWeight*tempValRhou)
+							q[e.elem1].surfRes[kk].rhov	+= (quartWeight*tempValRhov)
+							q[e.elem1].surfRes[kk].ener	+= (quartWeight*tempValEner)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+task residualVolume(ltsLevel : uint8, p_space : int8, Np : uint64, Nt : uint64, nTimeInt : uint64, wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), q : region(ispace(ptr),Elem))
+where
+	reads(wTimeInt.v, DOFToIntTime.v, Drw.v, Dsw.v, q.cellInd, q.factTimeLevRev, q.volRes, q.preSol, q.rx, q.sx, q.ry, q.sy),
+	writes(q.volRes)
 do
 	var solIntRho		: double[55]		-- Np, Ps=9
 	var solIntRhou		: double[55]		-- Np
@@ -1673,178 +2000,141 @@ do
 	var G2				: double[55]		-- Np
 	var G3				: double[55]		-- Np
 	var G4				: double[55]		-- Np
-	var F1s				: double[30]		-- Nfaces*Nfp, Ps=9 
-	var F2s				: double[30]		-- Nfaces*Nfp
-	var F3s				: double[30]		-- Nfaces*Nfp
-	var F4s				: double[30]		-- Nfaces*Nfp
-	var QMRho			: double[30]		-- Nfaces*Nfp
-	var QMRhou			: double[30]		-- Nfaces*Nfp
-	var QMRhov			: double[30]		-- Nfaces*Nfp
-	var QMEner			: double[30]		-- Nfaces*Nfp
-	var QPRho			: double[30]		-- Nfaces*Nfp
-	var QPRhou			: double[30]		-- Nfaces*Nfp
-	var QPRhov			: double[30]		-- Nfaces*Nfp
-	var QPEner			: double[30]		-- Nfaces*Nfp
-	var dFdr			: double[55]		-- Np, Ps=9 
+	var dFdr			: double[55]		-- Np
 	var dFds			: double[55]		-- Np
 	var dGdr			: double[55]		-- Np
 	var dGds			: double[55]		-- Np
 	var Nfp				: uint64 = p_space+1
 	var NfpSum			: uint64 = 3*Nfp 
 	var gamma			: double = 1.4
-	var w				: double
+	var halfWeight		: double
 	var tempVal			: double
 	var cellNum			: uint64
+	var elem0Cont		: int8
 
 	for e in q do
-		cellNum = q[e].cellInd
-		-- Initialize volume and surface residuals to zero for corrector step
-        for ii=0,Np do
-            q[cellNum].volRes[ii].rho = 0.0
-            q[cellNum].volRes[ii].rhou = 0.0
-            q[cellNum].volRes[ii].rhov = 0.0
-            q[cellNum].volRes[ii].ener = 0.0
-            q[cellNum].surfRes[ii].rho = 0.0
-            q[cellNum].surfRes[ii].rhou = 0.0
-            q[cellNum].surfRes[ii].rhov = 0.0
-            q[cellNum].surfRes[ii].ener = 0.0    
-        end
-		-- Looping over temporal integration points
-		for ii=0,nTimeInt do
-			-- Weight for residual calculation
-			w = 0.5*wTimeInt[ii].v
+		cellNum = e.cellInd
+		elem0Cont = ((ltsLevel+1)/q[cellNum].factTimeLevRev)*q[cellNum].factTimeLevRev-(ltsLevel+1)
 
-			-- Interpolate the predictor solution to the current temporal integration point
-			for kk=0,Np do
-				solIntRho[kk]  = 0.0
-				solIntRhou[kk] = 0.0
-				solIntRhov[kk] = 0.0
-				solIntEner[kk] = 0.0
-			end
-			for kk=0,Nt do
-				for ll=0,Np do
-					solIntRho[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[cellNum].preSol[kk*Np+ll].rho
-					solIntRhou[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[cellNum].preSol[kk*Np+ll].rhou
-					solIntRhov[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[cellNum].preSol[kk*Np+ll].rhov
-					solIntEner[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[cellNum].preSol[kk*Np+ll].ener
+		if ( elem0Cont == 0 ) then
+			-- Looping over temporal integration points
+			for ii=0,nTimeInt do
+				-- Temporal weight for volume residual calculation
+				halfWeight = 0.5*wTimeInt[ii].v
+    
+				-- Interpolate the predictor solution to the current temporal integration point
+				for kk=0,Np do
+					solIntRho[kk]  = 0.0
+					solIntRhou[kk] = 0.0
+					solIntRhov[kk] = 0.0
+					solIntEner[kk] = 0.0
 				end
-			end
-
-			---- Volume residual
-			-- Calculate flux
-			Euler2DFluxes(Np,F1,F2,F3,F4,G1,G2,G3,G4,solIntRho,solIntRhou,solIntRhov,solIntEner)
-
-			-- Rho
-			for kk=0, Np do
-				dFdr[kk] = 0.0
-				dFds[kk] = 0.0
-				dGdr[kk] = 0.0
-				dGds[kk] = 0.0
-				for ll=0, Np do
-					dFdr[kk] += Drw[kk*Np+ll].v*F1[ll]
-					dFds[kk] += Dsw[kk*Np+ll].v*F1[ll]
-					dGdr[kk] += Drw[kk*Np+ll].v*G1[ll]
-					dGds[kk] += Dsw[kk*Np+ll].v*G1[ll]
+				for kk=0,Nt do
+					for ll=0,Np do
+						solIntRho[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[cellNum].preSol[kk*Np+ll].rho
+						solIntRhou[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[cellNum].preSol[kk*Np+ll].rhou
+						solIntRhov[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[cellNum].preSol[kk*Np+ll].rhov
+						solIntEner[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[cellNum].preSol[kk*Np+ll].ener
+					end
 				end
-				q[cellNum].volRes[kk].rho += w*( q[cellNum].rx[kk]*dFdr[kk] + q[cellNum].sx[kk]*dFds[kk] + q[cellNum].ry[kk]*dGdr[kk] + q[cellNum].sy[kk]*dGds[kk] )
-			end
-
-			-- Rhou
-			for kk=0, Np do
-				dFdr[kk] = 0.0
-				dFds[kk] = 0.0
-				dGdr[kk] = 0.0
-				dGds[kk] = 0.0
-				for ll=0, Np do
-					dFdr[kk] += Drw[kk*Np+ll].v*F2[ll]
-					dFds[kk] += Dsw[kk*Np+ll].v*F2[ll]
-					dGdr[kk] += Drw[kk*Np+ll].v*G2[ll]
-					dGds[kk] += Dsw[kk*Np+ll].v*G2[ll]
-				end
-				q[cellNum].volRes[kk].rhou += w*( q[cellNum].rx[kk]*dFdr[kk] + q[cellNum].sx[kk]*dFds[kk] + q[cellNum].ry[kk]*dGdr[kk] + q[cellNum].sy[kk]*dGds[kk] )
-			end
-
-			-- Rhov
-			for kk=0, Np do
-				dFdr[kk] = 0.0
-				dFds[kk] = 0.0
-				dGdr[kk] = 0.0
-				dGds[kk] = 0.0
-				for ll=0, Np do
-					dFdr[kk] += Drw[kk*Np+ll].v*F3[ll]
-					dFds[kk] += Dsw[kk*Np+ll].v*F3[ll]
-					dGdr[kk] += Drw[kk*Np+ll].v*G3[ll]
-					dGds[kk] += Dsw[kk*Np+ll].v*G3[ll]
-				end
-				q[cellNum].volRes[kk].rhov += w*( q[cellNum].rx[kk]*dFdr[kk] + q[cellNum].sx[kk]*dFds[kk] + q[cellNum].ry[kk]*dGdr[kk] + q[cellNum].sy[kk]*dGds[kk] )
-			end
-
-			-- Ener
-			for kk=0, Np do
-				dFdr[kk] = 0.0
-				dFds[kk] = 0.0
-				dGdr[kk] = 0.0
-				dGds[kk] = 0.0
-				for ll=0, Np do
-					dFdr[kk] += Drw[kk*Np+ll].v*F4[ll]
-					dFds[kk] += Dsw[kk*Np+ll].v*F4[ll]
-					dGdr[kk] += Drw[kk*Np+ll].v*G4[ll]
-					dGds[kk] += Dsw[kk*Np+ll].v*G4[ll]
-				end
-				q[cellNum].volRes[kk].ener += w*( q[cellNum].rx[kk]*dFdr[kk] + q[cellNum].sx[kk]*dFds[kk] + q[cellNum].ry[kk]*dGdr[kk] + q[cellNum].sy[kk]*dGds[kk] )
-			end
-
-
-			---- Surface residual
-			-- Calculate surface fluxes
-			Euler2DLF(cellNum, p_space, F1s, F2s, F3s, F4s, q[cellNum].nx, q[cellNum].ny, QMFace[cellNum].rho[ii], QMFace[cellNum].rhou[ii], QMFace[cellNum].rhov[ii], QMFace[cellNum].ener[ii], QPFace[cellNum].rho[ii], QPFace[cellNum].rhou[ii], QPFace[cellNum].rhov[ii], QPFace[cellNum].ener[ii])
-
-			for kk=0,Np do
+    
+				---- Volume residual
+				-- Calculate flux
+				Euler2DFluxes(Np,F1,F2,F3,F4,G1,G2,G3,G4,solIntRho,solIntRhou,solIntRhov,solIntEner)
+    
 				-- Rho
-				tempVal = 0.0
-				for ll=0,3*Nfp do
-					tempVal -= LIFT[kk*NfpSum+ll].v*q[cellNum].Fscale[ll]*F1s[ll]
+				for kk=0, Np do
+					dFdr[kk] = 0.0
+					dFds[kk] = 0.0
+					dGdr[kk] = 0.0
+					dGds[kk] = 0.0
+					for ll=0, Np do
+						dFdr[kk] += Drw[kk*Np+ll].v*F1[ll]
+						dFds[kk] += Dsw[kk*Np+ll].v*F1[ll]
+						dGdr[kk] += Drw[kk*Np+ll].v*G1[ll]
+						dGds[kk] += Dsw[kk*Np+ll].v*G1[ll]
+					end
+					q[cellNum].volRes[kk].rho += halfWeight*( q[cellNum].rx[kk]*dFdr[kk] + q[cellNum].sx[kk]*dFds[kk] + q[cellNum].ry[kk]*dGdr[kk] + q[cellNum].sy[kk]*dGds[kk] )
 				end
-				q[cellNum].surfRes[kk].rho += (w*tempVal)
-
+    
 				-- Rhou
-				tempVal = 0.0
-				for ll=0,3*Nfp do
-					tempVal -= LIFT[kk*NfpSum+ll].v*q[cellNum].Fscale[ll]*F2s[ll]
+				for kk=0, Np do
+					dFdr[kk] = 0.0
+					dFds[kk] = 0.0
+					dGdr[kk] = 0.0
+					dGds[kk] = 0.0
+					for ll=0, Np do
+						dFdr[kk] += Drw[kk*Np+ll].v*F2[ll]
+						dFds[kk] += Dsw[kk*Np+ll].v*F2[ll]
+						dGdr[kk] += Drw[kk*Np+ll].v*G2[ll]
+						dGds[kk] += Dsw[kk*Np+ll].v*G2[ll]
+					end
+					q[cellNum].volRes[kk].rhou += halfWeight*( q[cellNum].rx[kk]*dFdr[kk] + q[cellNum].sx[kk]*dFds[kk] + q[cellNum].ry[kk]*dGdr[kk] + q[cellNum].sy[kk]*dGds[kk] )
 				end
-				q[cellNum].surfRes[kk].rhou += (w*tempVal)
-
+    
 				-- Rhov
-				tempVal = 0.0
-				for ll=0,3*Nfp do
-					tempVal -= LIFT[kk*NfpSum+ll].v*q[cellNum].Fscale[ll]*F3s[ll]
+				for kk=0, Np do
+					dFdr[kk] = 0.0
+					dFds[kk] = 0.0
+					dGdr[kk] = 0.0
+					dGds[kk] = 0.0
+					for ll=0, Np do
+						dFdr[kk] += Drw[kk*Np+ll].v*F3[ll]
+						dFds[kk] += Dsw[kk*Np+ll].v*F3[ll]
+						dGdr[kk] += Drw[kk*Np+ll].v*G3[ll]
+						dGds[kk] += Dsw[kk*Np+ll].v*G3[ll]
+					end
+					q[cellNum].volRes[kk].rhov += halfWeight*( q[cellNum].rx[kk]*dFdr[kk] + q[cellNum].sx[kk]*dFds[kk] + q[cellNum].ry[kk]*dGdr[kk] + q[cellNum].sy[kk]*dGds[kk] )
 				end
-				q[cellNum].surfRes[kk].rhov += (w*tempVal)
-
+    
 				-- Ener
-				tempVal = 0.0
-				for ll=0,3*Nfp do
-					tempVal -= LIFT[kk*NfpSum+ll].v*q[cellNum].Fscale[ll]*F4s[ll]
+				for kk=0, Np do
+					dFdr[kk] = 0.0
+					dFds[kk] = 0.0
+					dGdr[kk] = 0.0
+					dGds[kk] = 0.0
+					for ll=0, Np do
+						dFdr[kk] += Drw[kk*Np+ll].v*F4[ll]
+						dFds[kk] += Dsw[kk*Np+ll].v*F4[ll]
+						dGdr[kk] += Drw[kk*Np+ll].v*G4[ll]
+						dGds[kk] += Dsw[kk*Np+ll].v*G4[ll]
+					end
+					q[cellNum].volRes[kk].ener += halfWeight*( q[cellNum].rx[kk]*dFdr[kk] + q[cellNum].sx[kk]*dFds[kk] + q[cellNum].ry[kk]*dGdr[kk] + q[cellNum].sy[kk]*dGds[kk] )
 				end
-				q[cellNum].surfRes[kk].ener += (w*tempVal)
 			end
 		end
 	end
 end
 
-task Euler2DUpdateSolution(dt : double, Np : uint64, q : region(ispace(ptr),Elem))
+task Euler2DUpdateSolution(ltsLevel : uint8, dt : double, Np : uint64, q : region(ispace(ptr),Elem))
 where
-	reads(q.sol,q.volRes,q.surfRes,q.cellInd),
-	writes(q.sol)
+	reads(q.sol,q.volRes,q.surfRes,q.cellInd,q.factTimeLev,q.factTimeLevRev),
+	writes(q.sol,q.volRes,q.surfRes)
 do
-	var cellNum : uint64
+	var cellNum		: uint64
+	var elem0Cont	: int8
+	var dtLoc		: double
 	for e in q do
-		cellNum = q[e].cellInd
-		for kk=0,Np do
-			q[cellNum].sol[kk].rho  += dt*(q[cellNum].volRes[kk].rho + q[cellNum].surfRes[kk].rho)
-			q[cellNum].sol[kk].rhou += dt*(q[cellNum].volRes[kk].rhou + q[cellNum].surfRes[kk].rhou)
-			q[cellNum].sol[kk].rhov += dt*(q[cellNum].volRes[kk].rhov + q[cellNum].surfRes[kk].rhov)
-			q[cellNum].sol[kk].ener += dt*(q[cellNum].volRes[kk].ener + q[cellNum].surfRes[kk].ener)
+		cellNum = e.cellInd
+		elem0Cont = ((ltsLevel+1)/q[cellNum].factTimeLevRev)*q[cellNum].factTimeLevRev-(ltsLevel+1)
+		if ( elem0Cont == 0 ) then
+			dtLoc = dt/q[cellNum].factTimeLev
+			for kk=0,Np do
+				q[cellNum].sol[kk].rho  += dtLoc*(q[cellNum].volRes[kk].rho + q[cellNum].surfRes[kk].rho)
+				q[cellNum].sol[kk].rhou += dtLoc*(q[cellNum].volRes[kk].rhou + q[cellNum].surfRes[kk].rhou)
+				q[cellNum].sol[kk].rhov += dtLoc*(q[cellNum].volRes[kk].rhov + q[cellNum].surfRes[kk].rhov)
+				q[cellNum].sol[kk].ener += dtLoc*(q[cellNum].volRes[kk].ener + q[cellNum].surfRes[kk].ener)
+
+				-- Set volume and surface residuals to zero
+                q[cellNum].volRes[kk].rho = 0.0
+                q[cellNum].volRes[kk].rhou = 0.0
+                q[cellNum].volRes[kk].rhov = 0.0
+                q[cellNum].volRes[kk].ener = 0.0
+                q[cellNum].surfRes[kk].rho = 0.0
+                q[cellNum].surfRes[kk].rhou = 0.0
+                q[cellNum].surfRes[kk].rhov = 0.0
+                q[cellNum].surfRes[kk].ener = 0.0
+			end
 		end
 	end
 end
@@ -1998,10 +2288,12 @@ do
 	return LInf
 end
 
+
 task toplevel()
 	-- 1) Declare several variables
     var nDOFs				: uint64
 	var Nfp					: uint64
+	var NFaces				: uint64
     var Nt					: uint64
 	var nSpaceInt			: uint64
 	var nTimeInt			: uint64
@@ -2029,9 +2321,10 @@ task toplevel()
 	finalTime	= config.finalTime
 	CFL			= config.CFL
 	nTimeLev	= config.nTimeLev
-	nLTSStep	= pow(2,nTimeLev)-1
+	nLTSStep	= pow(2,nTimeLev-1)
 	nDOFs		= NpG
 	Nfp			= NfpG
+	NFaces		= NFacesG
 	Nt			= NtG
 	nSpaceInt	= nSpaceIntG
 	nTimeInt	= nTimeIntG
@@ -2040,6 +2333,7 @@ task toplevel()
 	cstring.strcpy(partFileNameLocal,partFileName)
 	cstring.strcat(partFileNameLocal,config.partFileTail)
 	var colors		= ispace(int1d, config.parallelism)
+	var colorsTime	= ispace(int1d, nTimeLev)
 
 
 	-- 3) Read standard element info based on p_space
@@ -2056,11 +2350,13 @@ task toplevel()
 	var lFirst		= region(ispace(int1d,Nt), doubleVal)
 	var wTimeInt	= region(ispace(int1d,nTimeInt), doubleVal)
 	var DOFToIntTime= region(ispace(int1d,nTimeInt*Nt), doubleVal)
+	var DOFToIntAdjTime= region(ispace(int1d,2*nTimeInt*Nt), doubleVal)
 	var AderIterMat	= region(ispace(int1d,(nDOFs*Nt)*(nDOFs*Nt)), doubleVal)
 	var vmapM		= region(ispace(int1d,3*Nfp), uintVal)
 	readStdElemSpaceInfo(stdElemSpaceFileName, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, vmapM)
-	readStdElemTimeInfo(stdElemTimeFileName, lFirst, wTimeInt, DOFToIntTime)
+	readStdElemTimeInfo(stdElemTimeFileName, lFirst, wTimeInt, DOFToIntTime, DOFToIntAdjTime)
 	readAderIterMatInfo(aderIterMatFileName, AderIterMat)
+
 
 	-- Create aliased partitions of regions for standard element
 	-- info regions to SPMDize the code
@@ -2073,17 +2369,19 @@ task toplevel()
 	var coloring7 = c.legion_domain_point_coloring_create()
 	var coloring8 = c.legion_domain_point_coloring_create()
 	var coloring9 = c.legion_domain_point_coloring_create()
+	var coloring10 = c.legion_domain_point_coloring_create()
 
 	for ii=0,config.parallelism do
 		c.legion_domain_point_coloring_color_domain(coloring1, [int1d](ii), rect1d {0,nDOFs*nDOFs-1})		-- MSpace, Dr, Ds, Drw, Dsw
 		c.legion_domain_point_coloring_color_domain(coloring2, [int1d](ii), rect1d {0,3*Nfp*nDOFs-1})		-- LIFT
 		c.legion_domain_point_coloring_color_domain(coloring3, [int1d](ii), rect1d {0,nSpaceInt*nDOFs-1})	-- DrSpaceInt, DsSpaceInt, DOFToIntSpaceTranspose
 		c.legion_domain_point_coloring_color_domain(coloring4, [int1d](ii), rect1d {0,nSpaceInt-1})			-- wSpaceInt
-		c.legion_domain_point_coloring_color_domain(coloring5, [int1d](ii), rect1d {0,Nt-1})					-- lFirst
-		c.legion_domain_point_coloring_color_domain(coloring6, [int1d](ii), rect1d {0,nTimeInt-1})				-- wTimeInt
-		c.legion_domain_point_coloring_color_domain(coloring7, [int1d](ii), rect1d {0,nTimeInt*Nt-1})					-- DOFTonIntTime
-		c.legion_domain_point_coloring_color_domain(coloring8, [int1d](ii), rect1d {0,nDOFs*Nt*nDOFs*Nt-1})	-- AderIterMat
-		c.legion_domain_point_coloring_color_domain(coloring9, [int1d](ii), rect1d {0,3*Nfp-1})				-- vmapM
+		c.legion_domain_point_coloring_color_domain(coloring5, [int1d](ii), rect1d {0,Nt-1})				-- lFirst
+		c.legion_domain_point_coloring_color_domain(coloring6, [int1d](ii), rect1d {0,nTimeInt-1})			-- wTimeInt
+		c.legion_domain_point_coloring_color_domain(coloring7, [int1d](ii), rect1d {0,nTimeInt*Nt-1})		-- DOFTonIntTime
+		c.legion_domain_point_coloring_color_domain(coloring8, [int1d](ii), rect1d {0,2*nTimeInt*Nt-1})		-- DOFTonIntAdjTime
+		c.legion_domain_point_coloring_color_domain(coloring9, [int1d](ii), rect1d {0,nDOFs*Nt*nDOFs*Nt-1})	-- AderIterMat
+		c.legion_domain_point_coloring_color_domain(coloring10, [int1d](ii), rect1d {0,3*Nfp-1})				-- vmapM
 	end
 	var MSpacePart					= partition(aliased,MSpace,coloring1,ispace(int1d,config.parallelism))
 	var DrPart						= partition(aliased,Dr,coloring1,ispace(int1d,config.parallelism))
@@ -2098,8 +2396,9 @@ task toplevel()
 	var lFirstPart					= partition(aliased,lFirst,coloring5,ispace(int1d,config.parallelism))
 	var wTimeIntPart				= partition(aliased,wTimeInt,coloring6,ispace(int1d,config.parallelism))
 	var DOFToIntTimePart			= partition(aliased,DOFToIntTime,coloring7,ispace(int1d,config.parallelism))
-	var AderIterMatPart				= partition(aliased,AderIterMat,coloring8,ispace(int1d,config.parallelism))
-	var vmapMPart					= partition(aliased,vmapM,coloring9,ispace(int1d,config.parallelism))
+	var DOFToIntAdjTimePart			= partition(aliased,DOFToIntAdjTime,coloring8,ispace(int1d,config.parallelism))
+	var AderIterMatPart				= partition(aliased,AderIterMat,coloring9,ispace(int1d,config.parallelism))
+	var vmapMPart					= partition(aliased,vmapM,coloring10,ispace(int1d,config.parallelism))
 	c.legion_domain_point_coloring_destroy(coloring1)
 	c.legion_domain_point_coloring_destroy(coloring2)
 	c.legion_domain_point_coloring_destroy(coloring3)
@@ -2109,6 +2408,7 @@ task toplevel()
 	c.legion_domain_point_coloring_destroy(coloring7)
 	c.legion_domain_point_coloring_destroy(coloring8)
 	c.legion_domain_point_coloring_destroy(coloring9)
+	c.legion_domain_point_coloring_destroy(coloring10)
 
 
 	-- 4) Read mesh
@@ -2118,18 +2418,14 @@ task toplevel()
 	var gridEToVEqual	= partition(equal,gridEToV,colors)
 
     -- Read vertices info
+	c.printf("--------------Read Vertices Info------------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("--------------Read Vertices Info------------\n\n")
-		end
 		readVertex(meshFileName,gridVertexEqual[color])
 	end
 
 	-- Read EToV info
+	c.printf("----------Read Elem To Vertex Info----------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("----------Read Elem To Vertex Info----------\n\n")
-		end
 		readElemToVertex(meshFileName,gridNv,gridVertex,gridEToVEqual[color])
 	end
 
@@ -2138,32 +2434,27 @@ task toplevel()
 	var q			= region(ispace(ptr,gridK), Elem)
 	var QMFace		= region(ispace(ptr,gridK), Surface)   
 	var QPFace		= region(ispace(ptr,gridK), Surface)
+	var face		= region(ispace(ptr,NFaces), surf)
 
 	var qEqual		= partition(equal,q,colors)
 	var QMFaceEqual	= partition(equal,QMFace,colors)
 	var QPFaceEqual	= partition(equal,QPFace,colors)
+	var faceEqual	= partition(equal,face,colors)
 
 
 	-- 6) Read connectivity info and graph partition info
+	c.printf("---------Generate Connectiviy Info----------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("---------Generate Connectiviy Info----------\n\n")
-		end
 		generateQPConnectivity(EToEFileName, EToFFileName, Nfp, qEqual[color])
 	end
+	c.printf("---------------Color Elements---------------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("---------------Color Elements---------------\n\n")
-		end
 		colorElem(partFileNameLocal, config.parallelism, gridVertex, gridEToVEqual[color],qEqual[color])
 	end
+	c.printf("--------------Read Faces Info---------------\n\n")
 	for color in colors do
-		if ( [uint32](color) == 0 ) then
-			c.printf("-----------------Color Faces----------------\n\n")
-		end
-		colorFaces(Nfp, q, qEqual[color], QMFaceEqual[color], QPFaceEqual[color])
+		readFaceInfo(faceFileName,faceEqual[color])
 	end
-	__fence(__execution, __block)
 
 
 	-- 7) Final partitioning based on cellColor and faceColor value
@@ -2172,8 +2463,8 @@ task toplevel()
 	var qParte2		= preimage(q,qPart,q.e2)
 	var qParte3		= preimage(q,qPart,q.e3)
 	var qPartHalo	= ( qParte1 | qParte2 | qParte3 ) - qPart
-	var QMFacePart	= partition(QMFace.faceColor, colors)
-	var QPFacePart	= partition(QPFace.faceColor, colors)
+--	var QMFacePart	= partition(QMFace.faceColor, colors)
+--	var QPFacePart	= partition(QPFace.faceColor, colors)
 
 	var gridEToVPart	= partition(gridEToV.cellColor, colors)
 	var gridVertexPart1	= image(gridVertex, gridEToVPart, gridEToV.v1)
@@ -2183,25 +2474,24 @@ task toplevel()
 
 
 	-- 8) Preprocessing and initialize the solution
+	c.printf("----------Build Internal DOFs Info----------\n\n")
 	for color in colors do
-		if ( [int8](color) == 0 ) then
-			c.printf("----------Build Internal DOFs Info----------\n\n")
-		end
 		buildNodes(p_space,nTimeLev,gridVertexPart[color],gridEToVPart[color],qPart[color])
 	end
+	c.printf("---Calculate Jacobians And Normal Vectors---\n\n")
 	for color in colors do
-		if ( [int8](color) == 0 ) then
-			c.printf("---Calculate Jacobians And Normal Vectors---\n\n")
-		end
-		calcGeoFacAndNormal(p_space,nSpaceInt,Dr,Ds,DrSpaceInt,DsSpaceInt,qPart[color])
+		calcGeoFacAndNormal(p_space,nSpaceInt,Dr,Ds,DrSpaceInt,DsSpaceInt,qEqual[color])
 	end
+	c.printf("-----------------Color Faces----------------\n\n")
 	for color in colors do
-		if ( [int8](color) == 0 ) then
-			c.printf("------------Initialize Solution-------------\n\n")
-		end
-		solutionAtTimeT(0.0,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,config.p0Val,qPart[color])
+		colorFaces(q, faceEqual[color])
 	end
---[[	__fence(__execution, __block)
+	c.printf("------------Initialize Solution-------------\n\n")
+	for color in colors do
+		solutionAtTimeT(0.0,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,config.p0Val,qEqual[color])
+	end
+	var facePart		= partition(face.faceColorGraph, colors)
+	__fence(__execution, __block)
 
 	c.printf("------------Run main simulation-------------\n")
 	c.printf("simTime = %9.4lf\n",simTime)
@@ -2237,90 +2527,51 @@ task toplevel()
 			tolSolAderEner		max= calcTolSolAderEner(nDOFs,qPart[color])
 		end
 
-
 		-- Calculate predictor solutions for all time levels
-
-
-		-- Surface residual for faces which have different time levels
-		-- If there is only one time level, following loop will be omitted
-		-- TODO : Need to provide appropriate partition
-		-- Loop over temporal integration points
-
-
-		-- Volume and Surface residuals for timeLev == 0 
-		-- Loop over temoral integration points
-		for jj=0, nTimeInt do
-			-- Interpolate solution
-
-			-- Calculate volume residual
-
-			-- Calculate surface residual
-
-			-- Accumulate total residual
-
+		for color in colors do
+			Euler2DPredictorWrapper(0,nDOFs,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpacePart[color],DrSpaceIntPart[color],DsSpaceIntPart[color],wSpaceIntPart[color],DOFToIntSpaceTransposePart[color],lFirstPart[color],wTimeIntPart[color],DOFToIntTimePart[color],AderIterMatPart[color],qPart[color])
 		end
 
-		-- Update solution for timeLev == 0 
+		-- Calculate surface residual contribution from owned faces
+		for color in colors do
+			residualSurfaceOwned(0,p_space,nDOFs,Nt,nTimeInt,wTimeIntPart[color],DOFToIntTimePart[color],DOFToIntAdjTimePart[color],LIFTPart[color],vmapMPart[color],qPart[color],facePart[color])
+		end
 
+		-- Calculate volume residual contribution for timeLev=0
+		for color in colors do
+			residualVolume(0,p_space,nDOFs,Nt,nTimeInt,wTimeIntPart[color],DOFToIntTimePart[color],DrwPart[color],DswPart[color],qPart[color])
+		end
+
+		-- Update the solution for timeLev == 0 
+		for color in colors do
+			Euler2DUpdateSolution(0,dt,nDOFs,qPart[color])
+		end
 
 		-- If there is only one time level, following loop will be omitted
-		--for ii=1, pow(2,nTimeLev)-1 do
-		for ii=1, nLTSStep 
-			-- Calculate predictor soutions for timeLev == 0
-
-
-			-- Surface residual for faces which have different time levels
-			-- Loop over temporal integration points
-			for jj=0, nTimeInt do
-				-- Interpolate solution
-
-				-- Calculate surface residual
-
-				-- Accumulate total residual
-
+		for ii=1, nLTSStep do
+			-- Calculate predictor soutions
+			for color in colors do
+				Euler2DPredictorWrapper(ii,nDOFs,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpacePart[color],DrSpaceIntPart[color],DsSpaceIntPart[color],wSpaceIntPart[color],DOFToIntSpaceTransposePart[color],lFirstPart[color],wTimeIntPart[color],DOFToIntTimePart[color],AderIterMatPart[color],qPart[color])
 			end
 
-			-- Volume and surface residuals for faces which have same time levels
-			-- If timeLev == 0, always calculate vol & surf residuals
-			-- If not, calculate vol & surf residuals when mod(ii+1,timeLev+1) == 0
-			-- Loop over temoral integration points
-			for jj=0, nTimeInt do
-				-- Interpolate solution
-
-				-- Calculate volume residual
-
-				-- Calculate surface residual
-
-				-- Accumulate total residual
-
+			-- Calculate surface residual contribution from owned faces
+			for color in colors do
+				residualSurfaceOwned(ii,p_space,nDOFs,Nt,nTimeInt,wTimeIntPart[color],DOFToIntTimePart[color],DOFToIntAdjTimePart[color],LIFTPart[color],vmapMPart[color],qPart[color],facePart[color])
 			end
 
-			-- Update solution for timeLev == 0
+			-- Calculate volume residual contribution
+			for color in colors do
+				residualVolume(ii,p_space,nDOFs,Nt,nTimeInt,wTimeIntPart[color],DOFToIntTimePart[color],DrwPart[color],DswPart[color],qPart[color])
+			end
 
+			-- Update the solution for timeLev == 0 
+			for color in colors do
+				Euler2DUpdateSolution(ii,dt,nDOFs,qPart[color])
+			end
 		end
-
-
-
-		-- Volume and Surface residuals for timeLev > 0 
-		-- TODO : Need to provide appropriate partition
-		-- Loop over temoral integration points
-		for jj=0, nTimeInt do
-			-- Interpolate solution
-
-			-- Calculate volume residual
-
-			-- Calculate surface residual
-
-			-- Accumulate total residual
-
-		end
-
-		-- Update solution for timeLev > 0
-		-- TODO :
-
 
 		-- Marching one time step
---		c.printf("simTime = %9.4lf\n",simTime)	-- This line should be commented if SPMD is used
+--		c.printf("simTime = %20.12lf\n",simTime)	-- This line should be commented if SPMD is used
 		simTime += dt
 	end
 	__fence(__execution, __block)
@@ -2331,13 +2582,13 @@ task toplevel()
 
 	--10) Calculate error
     for color in colors do
-        L1Error     +=  calcL1Error(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qPart[color])
+        L1Error     +=  calcL1Error(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qEqual[color])
     end
     for color in colors do
-        L2Error     +=  calcL2Error(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qPart[color])
+        L2Error     +=  calcL2Error(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qEqual[color])
     end
     for color in colors do
-        LInfError   max= calcLInfError(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qPart[color])
+        LInfError   max= calcLInfError(simTime,nDOFs,config.epsVal,config.rho0Val,config.u0Val,config.v0Val,qEqual[color])
     end
 
     L1Error /= (nDOFs*gridK)
