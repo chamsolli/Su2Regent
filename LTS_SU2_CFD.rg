@@ -2662,7 +2662,14 @@ task toplevel()
 	var L2Error				: double = 0.0
 	var LInfError			: double = 0.0
 	var token				: uint64 = 0
-	var partFileNameLocal	: int8[64]
+	var stdElemSpaceFileNameLocal	: int8[64]
+	var stdElemTimeFileNameLocal	: int8[64]
+	var aderIterMatFileNameLocal	: int8[64]
+	var meshFileNameLocal			: int8[64]
+	var EToEFileNameLocal			: int8[64]
+	var EToFFileNameLocal			: int8[64]
+	var faceFileNameLocal			: int8[64]
+	var partFileNameLocal			: int8[64]
 
 
 	-- 2) Get *.config input and assign values
@@ -2680,6 +2687,13 @@ task toplevel()
 	nTimeInt	= nTimeIntG
 	gridK		= gridKG
 	gridNv		= gridNvG
+	cstring.strcpy(stdElemSpaceFileNameLocal,stdElemSpaceFileName)
+	cstring.strcpy(stdElemTimeFileNameLocal,stdElemTimeFileName)
+	cstring.strcpy(aderIterMatFileNameLocal,aderIterMatFileName)
+	cstring.strcpy(meshFileNameLocal,meshFileName)
+	cstring.strcpy(EToEFileNameLocal,EToEFileName)
+	cstring.strcpy(EToFFileNameLocal,EToFFileName)
+	cstring.strcpy(faceFileNameLocal,faceFileName)
 	cstring.strcpy(partFileNameLocal,partFileName)
 	cstring.strcat(partFileNameLocal,config.partFileTail)
 	var colors		= ispace(int1d, config.parallelism)
@@ -2703,9 +2717,9 @@ task toplevel()
 	var DOFToIntAdjTime= region(ispace(int1d,2*nTimeInt*Nt), doubleVal)
 	var AderIterMat	= region(ispace(int1d,(nDOFs*Nt)*(nDOFs*Nt)), doubleVal)
 	var vmapM		= region(ispace(int1d,3*Nfp), uintVal)
-	readStdElemSpaceInfo(stdElemSpaceFileName, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, vmapM)
-	readStdElemTimeInfo(stdElemTimeFileName, lFirst, wTimeInt, DOFToIntTime, DOFToIntAdjTime)
-	readAderIterMatInfo(aderIterMatFileName, AderIterMat)
+	readStdElemSpaceInfo(stdElemSpaceFileNameLocal, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, vmapM)
+	readStdElemTimeInfo(stdElemTimeFileNameLocal, lFirst, wTimeInt, DOFToIntTime, DOFToIntAdjTime)
+	readAderIterMatInfo(aderIterMatFileNameLocal, AderIterMat)
 
 
 	-- Create aliased partitions of regions for standard element
@@ -2770,13 +2784,13 @@ task toplevel()
     -- Read vertices info
 	c.printf("--------------Read Vertices Info------------\n\n")
 	for color in colors do
-		readVertex(meshFileName,gridVertexEqual[color])
+		readVertex(meshFileNameLocal,gridVertexEqual[color])
 	end
 
 	-- Read EToV info
 	c.printf("----------Read Elem To Vertex Info----------\n\n")
 	for color in colors do
-		readElemToVertex(meshFileName,gridNv,gridVertex,gridEToVEqual[color])
+		readElemToVertex(meshFileNameLocal,gridNv,gridVertex,gridEToVEqual[color])
 	end
 
 
@@ -2790,7 +2804,7 @@ task toplevel()
 	-- 6) Read connectivity info and graph partition info
 	c.printf("---------Generate Connectiviy Info----------\n\n")
 	for color in colors do
-		generateQPConnectivity(EToEFileName, EToFFileName, Nfp, qEqual[color])
+		generateQPConnectivity(EToEFileNameLocal, EToFFileNameLocal, Nfp, qEqual[color])
 	end
 	c.printf("---------------Color Elements---------------\n\n")
 	for color in colors do
@@ -2798,7 +2812,7 @@ task toplevel()
 	end
 	c.printf("--------------Read Faces Info---------------\n\n")
 	for color in colors do
-		readFaceInfo(faceFileName,faceEqual[color])
+		readFaceInfo(faceFileNameLocal,faceEqual[color])
 	end
 
 

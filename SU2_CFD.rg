@@ -284,7 +284,7 @@ terra readDoubleVal(f : &c.FILE, val : &double)
 	return c.fscanf(f,"%lf\n",&val[0]) == 1
 end
 
-task readStdElemSpaceInfo(fileName : &int8, MSpace : region(ispace(int1d),doubleVal), Dr : region(ispace(int1d),doubleVal), Ds : region(ispace(int1d),doubleVal), Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), DrSpaceInt : region(ispace(int1d),doubleVal), DsSpaceInt : region(ispace(int1d),doubleVal), wSpaceInt : region(ispace(int1d),doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal) )
+task readStdElemSpaceInfo(fileName : int8[64], MSpace : region(ispace(int1d),doubleVal), Dr : region(ispace(int1d),doubleVal), Ds : region(ispace(int1d),doubleVal), Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), DrSpaceInt : region(ispace(int1d),doubleVal), DsSpaceInt : region(ispace(int1d),doubleVal), wSpaceInt : region(ispace(int1d),doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal) )
 where
 	reads writes(MSpace.v, Dr.v, Ds.v, Drw.v, Dsw.v, LIFT.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, vmapM.v)
 do
@@ -380,7 +380,7 @@ do
 	end
 end
 
-task readStdElemTimeInfo(fileName : &int8, lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), DOFToIntAdjTime : region(ispace(int1d),doubleVal))
+task readStdElemTimeInfo(fileName : int8[64], lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), DOFToIntAdjTime : region(ispace(int1d),doubleVal))
 where
 	reads writes(lFirst.v, wTimeInt.v, DOFToIntTime.v, DOFToIntAdjTime.v) 
 do
@@ -418,7 +418,7 @@ do
 	end
 end
 
-task readAderIterMatInfo(fileName : &int8, AderIterMat : region(ispace(int1d),doubleVal))
+task readAderIterMatInfo(fileName : int8[64], AderIterMat : region(ispace(int1d),doubleVal))
 where
 	reads writes(AderIterMat.v)
 do
@@ -439,7 +439,7 @@ do
 	end
 end
 
-task readVertex(meshFileName : &int8, gridVertex : region(ispace(ptr),GridVertex))
+task readVertex(meshFileName : int8[64], gridVertex : region(ispace(ptr),GridVertex))
 where
 	reads writes(gridVertex)
 do
@@ -468,7 +468,7 @@ do
 	c.fclose(f)
 end
 
-task readElemToVertex(meshFileName : &int8, gridNv : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)))
+task readElemToVertex(meshFileName : int8[64], gridNv : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)))
 where
 	reads writes(gridEToV)
 do
@@ -511,7 +511,7 @@ terra readData(f : &c.FILE, EVal : &uint64)
 	return c.fscanf(f, "%llu %llu %llu\n", &EVal[0],&EVal[1],&EVal[2]) == 3
 end
 
-task generateQPConnectivity(EToEFileName : &int8, EToFFileName : &int8, Nfp : uint64, q : region(ispace(ptr),Elem)) 
+task generateQPConnectivity(EToEFileName : int8[64], EToFFileName : int8[64], Nfp : uint64, q : region(ispace(ptr),Elem)) 
 where
 	reads writes(q.cellInd, q.QPInfo, q.adjQP, q.e1, q.e2, q.e3) 
 do
@@ -594,7 +594,7 @@ terra readColor(f : &c.FILE, colorInfo : &uint64)
 	return c.fscanf(f,"%llu %llu\n",&colorInfo[0],&colorInfo[1]) == 2
 end
 
-task colorElem(partFileName : &int8, parallelism : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)), q : region(ispace(ptr),Elem))
+task colorElem(partFileName : int8[64], parallelism : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)), q : region(ispace(ptr),Elem))
 where
 	reads writes(q.cellColor, gridEToV.cellColor)
 do
@@ -2008,7 +2008,13 @@ task toplevel()
 	var L2Error				: double = 0.0
 	var LInfError			: double = 0.0
 	var token				: uint64 = 0
-	var partFileNameLocal	: int8[64]
+	var stdElemSpaceFileNameLocal	: int8[64]
+	var stdElemTimeFileNameLocal	: int8[64]
+	var aderIterMatFileNameLocal	: int8[64]
+	var meshFileNameLocal			: int8[64]
+	var EToEFileNameLocal			: int8[64]
+	var EToFFileNameLocal			: int8[64]
+	var partFileNameLocal			: int8[64]
 
 
 	-- 2) Get *.config input and assign values
@@ -2023,6 +2029,12 @@ task toplevel()
 	nTimeInt	= nTimeIntG
 	gridK		= gridKG
 	gridNv		= gridNvG
+	cstring.strcpy(stdElemSpaceFileNameLocal,stdElemSpaceFileName)
+	cstring.strcpy(stdElemTimeFileNameLocal,stdElemTimeFileName)
+	cstring.strcpy(aderIterMatFileNameLocal,aderIterMatFileName)
+	cstring.strcpy(meshFileNameLocal,meshFileName)
+	cstring.strcpy(EToEFileNameLocal,EToEFileName)
+	cstring.strcpy(EToFFileNameLocal,EToFFileName)
 	cstring.strcpy(partFileNameLocal,partFileName)
 	cstring.strcat(partFileNameLocal,config.partFileTail)
 	var colors		= ispace(int1d, config.parallelism)
@@ -2045,9 +2057,13 @@ task toplevel()
 	var DOFToIntAdjTime= region(ispace(int1d,2*nTimeInt*Nt), doubleVal)
 	var AderIterMat	= region(ispace(int1d,(nDOFs*Nt)*(nDOFs*Nt)), doubleVal)
 	var vmapM		= region(ispace(int1d,3*Nfp), uintVal)
-	readStdElemSpaceInfo(stdElemSpaceFileName, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, vmapM)
-	readStdElemTimeInfo(stdElemTimeFileName, lFirst, wTimeInt, DOFToIntTime, DOFToIntAdjTime)
-	readAderIterMatInfo(aderIterMatFileName, AderIterMat)
+--	readStdElemSpaceInfo(stdElemSpaceFileName, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, vmapM)
+--	readStdElemTimeInfo(stdElemTimeFileName, lFirst, wTimeInt, DOFToIntTime, DOFToIntAdjTime)
+--	readAderIterMatInfo(aderIterMatFileName, AderIterMat)
+	readStdElemSpaceInfo(stdElemSpaceFileNameLocal, MSpace, Dr, Ds, Drw, Dsw, LIFT, DrSpaceInt, DsSpaceInt, wSpaceInt, DOFToIntSpaceTranspose, vmapM)
+	readStdElemTimeInfo(stdElemTimeFileNameLocal, lFirst, wTimeInt, DOFToIntTime, DOFToIntAdjTime)
+	readAderIterMatInfo(aderIterMatFileNameLocal, AderIterMat)
+
 
 	-- Create aliased partitions of regions for standard element
 	-- info regions to SPMDize the code
@@ -2107,13 +2123,13 @@ task toplevel()
     -- Read vertices info
 	c.printf("--------------Read Vertices Info------------\n\n")
 	for color in colors do
-		readVertex(meshFileName,gridVertexEqual[color])
+		readVertex(meshFileNameLocal,gridVertexEqual[color])
 	end
 
 	-- Read EToV info
 	c.printf("----------Read Elem To Vertex Info----------\n\n")
 	for color in colors do
-		readElemToVertex(meshFileName,gridNv,gridVertex,gridEToVEqual[color])
+		readElemToVertex(meshFileNameLocal,gridNv,gridVertex,gridEToVEqual[color])
 	end
 
 
@@ -2130,7 +2146,7 @@ task toplevel()
 	-- 6) Read connectivity info and graph partition info
 	c.printf("---------Generate Connectiviy Info----------\n\n")
 	for color in colors do
-		generateQPConnectivity(EToEFileName, EToFFileName, Nfp, qEqual[color])
+		generateQPConnectivity(EToEFileNameLocal, EToFFileNameLocal, Nfp, qEqual[color])
 	end
 	c.printf("---------------Color Elements---------------\n\n")
 	for color in colors do
