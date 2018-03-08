@@ -1025,56 +1025,57 @@ do
 	var rH				: double
 	var gamma			: double = 1.4
 	var w				: double
-	var fluxF1			: double[55]		-- Np, Ps=9 
-	var fluxF2			: double[55]		-- Np
-	var fluxF3			: double[55]		-- Np
-	var fluxF4			: double[55]		-- Np
-	var fluxG1			: double[55]		-- Np
-	var fluxG2			: double[55]		-- Np
-	var fluxG3			: double[55]		-- Np
-	var fluxG4			: double[55]		-- Np
-	var gradFluxesIntFr1: double[145]		-- nSpaceInt, Ps=9 
-	var gradFluxesIntFr2: double[145]		-- nSpaceInt
-	var gradFluxesIntFr3: double[145]		-- nSpaceInt
-	var gradFluxesIntFr4: double[145]		-- nSpaceInt
-	var gradFluxesIntFs1: double[145]		-- nSpaceInt
-	var gradFluxesIntFs2: double[145]		-- nSpaceInt
-	var gradFluxesIntFs3: double[145]		-- nSpaceInt
-	var gradFluxesIntFs4: double[145]		-- nSpaceInt
-	var gradFluxesIntGr1: double[145]		-- nSpaceInt
-	var gradFluxesIntGr2: double[145]		-- nSpaceInt
-	var gradFluxesIntGr3: double[145]		-- nSpaceInt
-	var gradFluxesIntGr4: double[145]		-- nSpaceInt
-	var gradFluxesIntGs1: double[145]		-- nSpaceInt
-	var gradFluxesIntGs2: double[145]		-- nSpaceInt
-	var gradFluxesIntGs3: double[145]		-- nSpaceInt
-	var gradFluxesIntGs4: double[145]		-- nSpaceInt
-	var resSolRho		: double[220]		-- (Np*Nt), Ps=9, Pt=3
-	var resSolRhou		: double[220]		-- (Np*Nt)
-	var resSolRhov		: double[220]		-- (Np*Nt)
-	var resSolEner		: double[220]		-- (Np*Nt)
-	var oldSolRho		: double[220]		-- (Np*Nt)
-	var oldSolRhou		: double[220]		-- (Np*Nt)
-	var oldSolRhov		: double[220]		-- (Np*Nt)
-	var oldSolEner		: double[220]		-- (Np*Nt)
-	var intSolRho		: double[55]		-- Np
-	var intSolRhou		: double[55]		-- Np
-	var intSolRhov		: double[55]		-- Np
-	var intSolEner		: double[55]		-- Np
-	var resIntRho		: double[55]		-- Np
-	var resIntRhou		: double[55]		-- Np
-	var resIntRhov		: double[55]		-- Np
-	var resIntEner		: double[55]		-- Np
-	var resDumRho		: double[145]		-- nSpaceInt 
-	var resDumRhou		: double[145]		-- nSpaceInt 
-	var resDumRhov		: double[145]		-- nSpaceInt 
-	var resDumEner		: double[145]		-- nSpaceInt 
-	var resTotRho		: double[220]		-- (Np*Nt)
-	var resTotRhou		: double[220]		-- (Np*Nt)
-	var resTotRhov		: double[220]		-- (Np*Nt)
-	var resTotEner		: double[220]		-- (Np*Nt)
-	var isConverged		: bool = true
 	var NtNp			: uint64 = Nt*Np
+	var fluxF1			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np, Ps=9 
+	var fluxF2			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var fluxF3			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var fluxF4			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var fluxG1			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var fluxG2			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var fluxG3			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var fluxG4			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var gradFluxesIntFr1: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt, Ps=9 
+	var gradFluxesIntFr2: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntFr3: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntFr4: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntFs1: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntFs2: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntFs3: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntFs4: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntGr1: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntGr2: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntGr3: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntGr4: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntGs1: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntGs2: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntGs3: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var gradFluxesIntGs4: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt
+	var resSolRho		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt), Ps=9, Pt=3
+	var resSolRhou		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var resSolRhov		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var resSolEner		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var oldSolRho		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var oldSolRhou		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var oldSolRhov		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var oldSolEner		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var intSolRho		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var intSolRhou		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var intSolRhov		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var intSolEner		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var resIntRho		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var resIntRhou		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var resIntRhov		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var resIntEner		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var resDumRho		: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt 
+	var resDumRhou		: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt 
+	var resDumRhov		: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt 
+	var resDumEner		: &double = [&double](c.malloc(nSpaceInt*[terralib.sizeof(double)]))		-- nSpaceInt 
+	var resTotRho		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var resTotRhou		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var resTotRhov		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var resTotEner		: &double = [&double](c.malloc(NtNp*[terralib.sizeof(double)]))		-- (Np*Nt)
+	var isConverged		: bool = true
+
 
     -- Initialize the predictor solution by current solution
 	indVal = 0
@@ -1342,22 +1343,22 @@ do
 	var cellNum			: uint64
 	var cellNumTemp		: uint64
 	var indVal			: uint64	
-	var preSolRho		: double[220]		-- Np*Nt, Ps=9, Pt=3
-	var preSolRhou		: double[220]		-- Np*Nt
-	var preSolRhov		: double[220]		-- Np*Nt
-	var preSolEner		: double[220]		-- Np*Nt
-	var preSolRhoTemp	: double[220]		-- Np*Nt
-	var preSolRhouTemp	: double[220]		-- Np*Nt
-	var preSolRhovTemp	: double[220]		-- Np*Nt
-	var preSolEnerTemp	: double[220]		-- Np*Nt
-	var solIntRho		: double[55]		-- Np, Ps=9
-	var solIntRhou		: double[55]		-- Np
-	var solIntRhov		: double[55]		-- Np
-	var solIntEner		: double[55]		-- Np
-	var solIntRhoTemp	: double[55]		-- Np
-	var solIntRhouTemp	: double[55]		-- Np
-	var solIntRhovTemp	: double[55]		-- Np
-	var solIntEnerTemp	: double[55]		-- Np
+	var preSolRho		: &double = [&double](c.malloc(Nt*Np*[terralib.sizeof(double)]))		-- Np*Nt, Ps=9, Pt=3
+	var preSolRhou		: &double = [&double](c.malloc(Nt*Np*[terralib.sizeof(double)]))		-- Np*Nt
+	var preSolRhov		: &double = [&double](c.malloc(Nt*Np*[terralib.sizeof(double)]))		-- Np*Nt
+	var preSolEner		: &double = [&double](c.malloc(Nt*Np*[terralib.sizeof(double)]))		-- Np*Nt
+	var preSolRhoTemp	: &double = [&double](c.malloc(Nt*Np*[terralib.sizeof(double)]))		-- Np*Nt
+	var preSolRhouTemp	: &double = [&double](c.malloc(Nt*Np*[terralib.sizeof(double)]))		-- Np*Nt
+	var preSolRhovTemp	: &double = [&double](c.malloc(Nt*Np*[terralib.sizeof(double)]))		-- Np*Nt
+	var preSolEnerTemp	: &double = [&double](c.malloc(Nt*Np*[terralib.sizeof(double)]))		-- Np*Nt
+	var solIntRho		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np, Ps=9
+	var solIntRhou		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var solIntRhov		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var solIntEner		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var solIntRhoTemp	: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var solIntRhouTemp	: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var solIntRhovTemp	: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var solIntEnerTemp	: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
 	var Nfp				: uint64 = p_space+1
 
 	for e in q do
