@@ -1670,7 +1670,6 @@ do
 	var tempValRhou		: double
 	var tempValRhov		: double
 	var tempValEner		: double
-	var w				: double = 0.5
 	var Nfp				: uint64 = p_space+1
 	var NfpSum			: uint64 = 3*Nfp
 	var nTimeIntNt		: uint64 = nTimeInt*Nt
@@ -1697,6 +1696,356 @@ do
 			-- timeLev1    X      O      X      O
 			-- timeLev2    X      X      X      O
 
+			elem0Cont = ((ltsLevel+1)/q[e.elem0].factTimeLevRev)*q[e.elem0].factTimeLevRev-(ltsLevel+1)
+			if ( elem0Cont == 0 ) then
+				elem1Cont = ((ltsLevel+1)/q[e.elem1].factTimeLevRev)*q[e.elem1].factTimeLevRev-(ltsLevel+1)
+
+				-- 1) Both elements are same time level
+				if not ( e.isDiffTimeLev ) then
+					cellNum = e.elem0
+
+					-- Determine face orientation
+					lB0 = (e.face0-1)*Nfp
+					uB0 = e.face0*Nfp
+					isFlipped = false
+					indValGrad = 1
+					if ( e.face1 > 9 ) then
+						-- Elem1 side is flipped
+						lB1 = (e.face1/10-1)*Nfp
+						uB1 = e.face1*Nfp/10
+						isFlipped = true
+					else
+						lB1 = (e.face1-1)*Nfp
+						uB1 = e.face1*Nfp
+					end
+
+					for ii=0,nTimeInt do
+						-- Temporal weight for surface residual calculation
+						halfWeight = 0.5*wTimeInt[ii].v
+
+						-- Interpolate predictor solution of elem0
+						for kk=0,Np do
+							solIntRho0[kk]	= 0.0
+							solIntRhou0[kk]	= 0.0
+							solIntRhov0[kk]	= 0.0
+							solIntEner0[kk]	= 0.0
+						end
+						indVal = 0
+						for kk=0,Nt do
+							for ll=0,Np do
+								solIntRho0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rho
+								solIntRhou0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rhou
+								solIntRhov0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rhov
+								solIntEner0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].ener
+								indVal = indVal + 1
+							end
+						end
+
+						-- Assign QM values
+						indVal = 0
+						for kk=lB0,uB0 do
+							QMRho[indVal]	= solIntRho0[vmapM[kk].v]
+							QMRhou[indVal]	= solIntRhou0[vmapM[kk].v]
+							QMRhov[indVal]	= solIntRhov0[vmapM[kk].v]
+							QMEner[indVal]	= solIntEner0[vmapM[kk].v]
+							indVal = indVal + 1
+						end
+        
+						-- Interpolate predictor solution of elem1
+						for kk=0,Np do
+							solIntRho1[kk]	= 0.0
+							solIntRhou1[kk]	= 0.0
+							solIntRhov1[kk]	= 0.0
+							solIntEner1[kk]	= 0.0
+						end
+						indVal = 0
+						for kk=0,Nt do
+							for ll=0,Np do
+								solIntRho1[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem1].preSol[indVal].rho
+								solIntRhou1[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem1].preSol[indVal].rhou
+								solIntRhov1[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem1].preSol[indVal].rhov
+								solIntEner1[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem1].preSol[indVal].ener
+								indVal = indVal + 1
+							end
+						end
+
+						-- Assign QP values 
+						indVal = 0
+						indValGrad = 1
+						if ( isFlipped ) then
+							indVal = Nfp-1
+							indValGrad = -1						
+						end
+    
+						for kk=lB1,uB1 do
+							QPRho[indVal]	= solIntRho1[vmapM[kk].v]
+							QPRhou[indVal]	= solIntRhou1[vmapM[kk].v]
+							QPRhov[indVal]	= solIntRhov1[vmapM[kk].v]
+							QPEner[indVal]	= solIntEner1[vmapM[kk].v]
+							indVal = indVal + indValGrad
+						end
+        
+						-- Calculate surface fluxes
+						Euler2DLF(cellNum, p_space, lB0, F1s, F2s, F3s, F4s, q[cellNum].nx, q[cellNum].ny, QMRho, QMRhou, QMRhov, QMEner, QPRho, QPRhou, QPRhov, QPEner)
+
+						-- Update elem0 surface residual
+						for kk=0,Np do
+							tempValRho	= 0.0
+							tempValRhou	= 0.0
+							tempValRhov	= 0.0
+							tempValEner	= 0.0
+							indVal = 0
+							for ll=lB0,uB0 do
+								tempValRho	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F1s[indVal]
+								tempValRhou	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F2s[indVal]
+								tempValRhov	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F3s[indVal]
+								tempValEner	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F4s[indVal]
+								indVal = indVal + 1 
+							end
+            
+							q[e.elem0].surfRes[kk].rho	+= (halfWeight*tempValRho)
+							q[e.elem0].surfRes[kk].rhou	+= (halfWeight*tempValRhou)
+							q[e.elem0].surfRes[kk].rhov	+= (halfWeight*tempValRhov)
+							q[e.elem0].surfRes[kk].ener	+= (halfWeight*tempValEner)
+						end
+
+						-- Update elem1 surface residual
+						for kk=0,Np do
+							tempValRho	= 0.0
+							tempValRhou	= 0.0
+							tempValRhov	= 0.0
+							tempValEner	= 0.0
+							indVal = 0
+							indValGrad = 1
+							if ( isFlipped ) then
+								indVal = Nfp-1
+								indValGrad = -1						
+							end
+							for ll=lB1,uB1 do
+								-- Note that signs are flipped compared to elem0
+								tempValRho	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F1s[indVal]
+								tempValRhou	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F2s[indVal]
+								tempValRhov	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F3s[indVal]
+								tempValEner	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F4s[indVal]
+								indVal = indVal + indValGrad
+							end
+							q[e.elem1].surfRes[kk].rho	+= (halfWeight*tempValRho)
+							q[e.elem1].surfRes[kk].rhou	+= (halfWeight*tempValRhou)
+							q[e.elem1].surfRes[kk].rhov	+= (halfWeight*tempValRhov)
+							q[e.elem1].surfRes[kk].ener	+= (halfWeight*tempValEner)
+						end
+					end
+				-- 2) Elem1 has higher time level
+				else
+					cellNum = e.elem0
+					if ( elem1Cont == 0 ) then
+						isSecond = 1
+					else
+						isSecond = 0
+					end
+
+					-- Determine face orientation
+					lB0 = (e.face0-1)*Nfp
+					uB0 = e.face0*Nfp
+					isFlipped = false
+					indValGrad = 1
+					if ( e.face1 > 9 ) then
+						-- Elem1 side is flipped
+						lB1 = (e.face1/10-1)*Nfp
+						uB1 = e.face1*Nfp/10
+						isFlipped = true
+					else
+						lB1 = (e.face1-1)*Nfp
+						uB1 = e.face1*Nfp
+					end
+
+					for ii=0,nTimeInt do
+						-- Temporal weight for surface residual calculation
+						halfWeight = 0.5*wTimeInt[ii].v
+						quartWeight = 0.25*wTimeInt[ii].v
+
+						-- Interpolate predictor solution of elem0
+						for kk=0,Np do
+							solIntRho0[kk]	= 0.0
+							solIntRhou0[kk]	= 0.0
+							solIntRhov0[kk]	= 0.0
+							solIntEner0[kk]	= 0.0
+						end
+						indVal = 0
+						for kk=0,Nt do
+							for ll=0,Np do
+								solIntRho0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rho
+								solIntRhou0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rhou
+								solIntRhov0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].rhov
+								solIntEner0[ll]	+= DOFToIntTime[ii*Nt+kk].v*q[e.elem0].preSol[indVal].ener
+								indVal = indVal + 1
+							end
+						end
+
+						-- Assign QM values
+						indVal = 0
+						for kk=lB0,uB0 do
+							QMRho[indVal]	= solIntRho0[vmapM[kk].v]
+							QMRhou[indVal]	= solIntRhou0[vmapM[kk].v]
+							QMRhov[indVal]	= solIntRhov0[vmapM[kk].v]
+							QMEner[indVal]	= solIntEner0[vmapM[kk].v]
+							indVal = indVal + 1
+						end
+        
+						-- Interpolate predictor solution of elem1
+						for kk=0,Np do
+							solIntRho1[kk]	= 0.0
+							solIntRhou1[kk]	= 0.0
+							solIntRhov1[kk]	= 0.0
+							solIntEner1[kk]	= 0.0
+						end
+						indVal = 0
+						for kk=0,Nt do
+							for ll=0,Np do
+								solIntRho1[ll]	+= DOFToIntAdjTime[ii*Nt+isSecond*nTimeIntNt+kk].v*q[e.elem1].preSol[indVal].rho
+								solIntRhou1[ll]	+= DOFToIntAdjTime[ii*Nt+isSecond*nTimeIntNt+kk].v*q[e.elem1].preSol[indVal].rhou
+								solIntRhov1[ll]	+= DOFToIntAdjTime[ii*Nt+isSecond*nTimeIntNt+kk].v*q[e.elem1].preSol[indVal].rhov
+								solIntEner1[ll]	+= DOFToIntAdjTime[ii*Nt+isSecond*nTimeIntNt+kk].v*q[e.elem1].preSol[indVal].ener
+								indVal = indVal + 1
+							end
+						end
+
+						-- Assign QP values 
+						indVal = 0
+						indValGrad = 1
+						if ( isFlipped ) then
+							indVal = Nfp-1
+							indValGrad = -1						
+						end
+    
+						for kk=lB1,uB1 do
+							QPRho[indVal]	= solIntRho1[vmapM[kk].v]
+							QPRhou[indVal]	= solIntRhou1[vmapM[kk].v]
+							QPRhov[indVal]	= solIntRhov1[vmapM[kk].v]
+							QPEner[indVal]	= solIntEner1[vmapM[kk].v]
+							indVal = indVal + indValGrad
+						end
+        
+						-- Calculate surface fluxes
+						Euler2DLF(cellNum, p_space, lB0, F1s, F2s, F3s, F4s, q[cellNum].nx, q[cellNum].ny, QMRho, QMRhou, QMRhov, QMEner, QPRho, QPRhou, QPRhov, QPEner)
+
+						-- Update elem0 surface residual
+						for kk=0,Np do
+							tempValRho	= 0.0
+							tempValRhou	= 0.0
+							tempValRhov	= 0.0
+							tempValEner	= 0.0
+							indVal = 0
+							for ll=lB0,uB0 do
+								tempValRho	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F1s[indVal]
+								tempValRhou	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F2s[indVal]
+								tempValRhov	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F3s[indVal]
+								tempValEner	-= LIFT[kk*NfpSum+ll].v*q[e.elem0].Fscale[ll]*F4s[indVal]
+								indVal = indVal + 1 
+							end
+            
+							q[e.elem0].surfRes[kk].rho	+= (halfWeight*tempValRho)
+							q[e.elem0].surfRes[kk].rhou	+= (halfWeight*tempValRhou)
+							q[e.elem0].surfRes[kk].rhov	+= (halfWeight*tempValRhov)
+							q[e.elem0].surfRes[kk].ener	+= (halfWeight*tempValEner)
+						end
+
+						-- Update elem1 surface residual
+						for kk=0,Np do
+							tempValRho	= 0.0
+							tempValRhou	= 0.0
+							tempValRhov	= 0.0
+							tempValEner	= 0.0
+							indVal = 0
+							indValGrad = 1
+							if ( isFlipped ) then
+								indVal = Nfp-1
+								indValGrad = -1						
+							end
+							for ll=lB1,uB1 do
+								-- Note that signs are flipped compared to elem0
+								tempValRho	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F1s[indVal]
+								tempValRhou	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F2s[indVal]
+								tempValRhov	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F3s[indVal]
+								tempValEner	+= LIFT[kk*NfpSum+ll].v*q[e.elem1].Fscale[ll]*F4s[indVal]
+								indVal = indVal + indValGrad
+							end
+							q[e.elem1].surfRes[kk].rho	+= (quartWeight*tempValRho)
+							q[e.elem1].surfRes[kk].rhou	+= (quartWeight*tempValRhou)
+							q[e.elem1].surfRes[kk].rhov	+= (quartWeight*tempValRhov)
+							q[e.elem1].surfRes[kk].ener	+= (quartWeight*tempValEner)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+task residualSurfaceHalo(ltsLevel : uint8, p_space : uint64, Np : uint64, Nt : uint64, nTimeInt : uint64, wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), DOFToIntAdjTime : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal), q : region(ispace(ptr),Elem), face : region(ispace(ptr),surf) )
+where
+	reads(wTimeInt.v, DOFToIntTime.v, DOFToIntAdjTime.v, LIFT.v, vmapM.v, q.preSol, q.nx, q.ny, q.Fscale, q.surfRes, q.factTimeLevRev, face.elem0, face.elem1, face.face0, face.face1, face.isElem1Halo, face.isDiffTimeLev),
+	reduces+(q.surfRes)
+do
+	var indVal			: uint64
+	var indValGrad		: int8
+	var isFlipped		: bool
+	var lB0				: uint64
+	var uB0				: uint64
+	var lB1				: uint64
+	var uB1				: uint64
+	var solIntRho0		: double[55]		-- Np, Ps=9
+	var solIntRhou0		: double[55]		-- Np
+	var solIntRhov0		: double[55]		-- Np
+	var solIntEner0		: double[55]		-- Np
+	var solIntRho1		: double[55]		-- Np
+	var solIntRhou1		: double[55]		-- Np
+	var solIntRhov1		: double[55]		-- Np
+	var solIntEner1		: double[55]		-- Np
+	var QMRho			: double[10]		-- Nfp, Ps=9
+	var QMRhou			: double[10]		-- Nfp
+	var QMRhov			: double[10]		-- Nfp
+	var QMEner			: double[10]		-- Nfp
+	var QPRho			: double[10]		-- Nfp
+	var QPRhou			: double[10]		-- Nfp
+	var QPRhov			: double[10]		-- Nfp
+	var QPEner			: double[10]		-- Nfp
+	var F1s				: double[10]		-- Nfp, Ps=9
+	var F2s				: double[10]		-- Nfp
+	var F3s				: double[10]		-- Nfp
+	var F4s				: double[10]		-- Nfp
+	var halfWeight		: double
+	var quartWeight		: double
+	var tempValRho		: double
+	var tempValRhou		: double
+	var tempValRhov		: double
+	var tempValEner		: double
+	var Nfp				: uint64 = p_space+1
+	var NfpSum			: uint64 = 3*Nfp
+	var nTimeIntNt		: uint64 = nTimeInt*Nt
+	var cellNum			: uint64
+	var elem0Cont		: int8
+	var elem1Cont		: int8
+	var isSecond		: int8
+
+
+	for e in face do
+		if ( e.isElem1Halo ) then
+			-- Elem0 and Elem1 are not in the same graph partition
+			-- Region reduction is needed for Elem1's surfRes
+			-- Now we may have two cases where
+			-- 1) Both elements are same time level or
+			-- 2) Elem1 has higher time level
+			-- For both cases, we need to calculate surface 
+			-- residual contribution of current face based on
+			-- ltsLevel and factTimeLev value.
+			-- For example, for three time level case
+			--                   ltsLevel
+			--             0      1      2      3
+			-- ------------------------------------
+			-- timeLev0    O      O      O      O
+			-- timeLev1    X      O      X      O
+			-- timeLev2    X      X      X      O
 			elem0Cont = ((ltsLevel+1)/q[e.elem0].factTimeLevRev)*q[e.elem0].factTimeLevRev-(ltsLevel+1)
 			if ( elem0Cont == 0 ) then
 				elem1Cont = ((ltsLevel+1)/q[e.elem1].factTimeLevRev)*q[e.elem1].factTimeLevRev-(ltsLevel+1)
@@ -2289,6 +2638,7 @@ do
 end
 
 
+
 task toplevel()
 	-- 1) Declare several variables
     var nDOFs				: uint64
@@ -2432,13 +2782,8 @@ task toplevel()
 
 	-- 5) Declare regions
 	var q			= region(ispace(ptr,gridK), Elem)
-	var QMFace		= region(ispace(ptr,gridK), Surface)   
-	var QPFace		= region(ispace(ptr,gridK), Surface)
 	var face		= region(ispace(ptr,NFaces), surf)
-
 	var qEqual		= partition(equal,q,colors)
-	var QMFaceEqual	= partition(equal,QMFace,colors)
-	var QPFaceEqual	= partition(equal,QPFace,colors)
 	var faceEqual	= partition(equal,face,colors)
 
 
@@ -2462,9 +2807,7 @@ task toplevel()
 	var qParte1		= preimage(q,qPart,q.e1)
 	var qParte2		= preimage(q,qPart,q.e2)
 	var qParte3		= preimage(q,qPart,q.e3)
-	var qPartHalo	= ( qParte1 | qParte2 | qParte3 ) - qPart
---	var QMFacePart	= partition(QMFace.faceColor, colors)
---	var QPFacePart	= partition(QPFace.faceColor, colors)
+	var qPartHalo	= ( qParte1 | qParte2 | qParte3 )
 
 	var gridEToVPart	= partition(gridEToV.cellColor, colors)
 	var gridVertexPart1	= image(gridVertex, gridEToVPart, gridEToV.v1)
@@ -2532,9 +2875,14 @@ task toplevel()
 			Euler2DPredictorWrapper(0,nDOFs,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpacePart[color],DrSpaceIntPart[color],DsSpaceIntPart[color],wSpaceIntPart[color],DOFToIntSpaceTransposePart[color],lFirstPart[color],wTimeIntPart[color],DOFToIntTimePart[color],AderIterMatPart[color],qPart[color])
 		end
 
-		-- Calculate surface residual contribution from owned faces
+		-- Calculate surface residual contribution from owned elements
 		for color in colors do
 			residualSurfaceOwned(0,p_space,nDOFs,Nt,nTimeInt,wTimeIntPart[color],DOFToIntTimePart[color],DOFToIntAdjTimePart[color],LIFTPart[color],vmapMPart[color],qPart[color],facePart[color])
+		end
+
+		-- Calculate surface residual contribution from halo elements
+		for color in colors do
+			residualSurfaceHalo(0,p_space,nDOFs,Nt,nTimeInt,wTimeIntPart[color],DOFToIntTimePart[color],DOFToIntAdjTimePart[color],LIFTPart[color],vmapMPart[color],qPartHalo[color],facePart[color])		
 		end
 
 		-- Calculate volume residual contribution for timeLev=0
@@ -2554,9 +2902,14 @@ task toplevel()
 				Euler2DPredictorWrapper(ii,nDOFs,Nt,nSpaceInt,nTimeInt,dt,tolSolAderRho,tolSolAderRhouRhov,tolSolAderEner,MSpacePart[color],DrSpaceIntPart[color],DsSpaceIntPart[color],wSpaceIntPart[color],DOFToIntSpaceTransposePart[color],lFirstPart[color],wTimeIntPart[color],DOFToIntTimePart[color],AderIterMatPart[color],qPart[color])
 			end
 
-			-- Calculate surface residual contribution from owned faces
+			-- Calculate surface residual contribution from owned elements
 			for color in colors do
 				residualSurfaceOwned(ii,p_space,nDOFs,Nt,nTimeInt,wTimeIntPart[color],DOFToIntTimePart[color],DOFToIntAdjTimePart[color],LIFTPart[color],vmapMPart[color],qPart[color],facePart[color])
+			end
+
+			-- Calculate surface residual contribution from halo elements
+			for color in colors do
+				residualSurfaceHalo(ii,p_space,nDOFs,Nt,nTimeInt,wTimeIntPart[color],DOFToIntTimePart[color],DOFToIntAdjTimePart[color],LIFTPart[color],vmapMPart[color],qPartHalo[color],facePart[color])		
 			end
 
 			-- Calculate volume residual contribution
