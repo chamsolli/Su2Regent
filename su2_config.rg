@@ -206,9 +206,13 @@ terra su2Config:initializeFromCommand()
 					cstring.strcpy(self.partFileTail,"128.dat")
 				elseif ( self.parallelism == 256 ) then
 					cstring.strcpy(self.partFileTail,"256.dat")
+				elseif ( self.parallelism == 512 ) then
+					cstring.strcpy(self.partFileTail,"512.dat")
+				elseif ( self.parallelism == 1024 ) then
+					cstring.strcpy(self.partFileTail,"1024.dat")
 				else
 					c.printf("Doesn't support given parallelism\n")
-					c.printf("Change parallelism values to 2, 4, 8, 16, 32, 64, 128 or 256\n")
+					c.printf("Change parallelism values to 2, 4, 8, 16, 32, 64, 128, 256, 512 or 1024\n")
 					c.abort()
 				end
 			else
