@@ -709,18 +709,33 @@ do
 			e.factTimeLev = 1.0
 			e.factTimeLevRev = 1
 		else
-
 			-- Hardcoded time levels for LTS
 			xCenter = (gridVertex[gridEToV[cellNum].v1].VX + gridVertex[gridEToV[cellNum].v2].VX + gridVertex[gridEToV[cellNum].v3].VX)/3
 			yCenter = (gridVertex[gridEToV[cellNum].v1].VY + gridVertex[gridEToV[cellNum].v2].VY + gridVertex[gridEToV[cellNum].v3].VY)/3
-			if ( xCenter < 3.333 ) and ( yCenter < -1.666 ) then
-				e.timeLev = [int1d](0)
-				e.factTimeLev = pow(2.0,1.0) -- 2^(nTimeLev-curTimeLev)
-				e.factTimeLevRev = pow(2,0)
-			else
-				e.timeLev = [int1d](1)
-				e.factTimeLev = pow(2.0,0.0) -- 2^(nTimeLev-curTimeLev)
-				e.factTimeLevRev = pow(2,1)
+			if ( nTimeLev == 2 ) then
+				if ( pow(xCenter-5.0,2) + pow(yCenter-0.0,2) - 1.5*1.5 < 0 ) then
+					e.timeLev = [int1d](0)
+					e.factTimeLev = pow(2.0,1.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,0)
+				else
+					e.timeLev = [int1d](1)
+					e.factTimeLev = pow(2.0,0.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,1)
+				end
+			elseif ( nTimeLev == 3 ) then
+				if ( pow(xCenter-5.0,2) + pow(yCenter-0.0,2) - 0.5*0.5 < 0 ) then
+					e.timeLev = [int1d](0)
+					e.factTimeLev = pow(2.0,2.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,0)
+				elseif ( pow(xCenter-5.0,2) + pow(yCenter-0.0,2) - 1.5*1.5 < 0 ) then
+					e.timeLev = [int1d](1)
+					e.factTimeLev = pow(2.0,1.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,1)
+				else
+					e.timeLev = [int1d](2)
+					e.factTimeLev = pow(2.0,0.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,2)
+				end
 			end
 		end
 	end
