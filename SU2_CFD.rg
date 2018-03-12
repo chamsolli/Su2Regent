@@ -1333,6 +1333,56 @@ do
 		c.printf("TERMINATE THE PROGRAM..")
 		c.abort()
 	end
+
+	-- Free buffers
+	c.free(fluxF1)
+	c.free(fluxF2)
+	c.free(fluxF3)
+	c.free(fluxF4)
+	c.free(fluxG1)
+	c.free(fluxG2)
+	c.free(fluxG3)
+	c.free(fluxG4)
+	c.free(gradFluxesIntFr1)
+	c.free(gradFluxesIntFr2)
+	c.free(gradFluxesIntFr3)
+	c.free(gradFluxesIntFr4)
+	c.free(gradFluxesIntFs1)
+	c.free(gradFluxesIntFs2)
+	c.free(gradFluxesIntFs3)
+	c.free(gradFluxesIntFs4)
+	c.free(gradFluxesIntGr1)
+	c.free(gradFluxesIntGr2)
+	c.free(gradFluxesIntGr3)
+	c.free(gradFluxesIntGr4)
+	c.free(gradFluxesIntGs1)
+	c.free(gradFluxesIntGs2)
+	c.free(gradFluxesIntGs3)
+	c.free(gradFluxesIntGs4)
+	c.free(resSolRho)
+	c.free(resSolRhou)
+	c.free(resSolRhov)
+	c.free(resSolEner)
+	c.free(oldSolRho)
+	c.free(oldSolRhou)
+	c.free(oldSolRhov)
+	c.free(oldSolEner)
+	c.free(intSolRho)
+	c.free(intSolRhou)
+	c.free(intSolRhov)
+	c.free(intSolEner)
+	c.free(resIntRho)
+	c.free(resIntRhou)
+	c.free(resIntRhov)
+	c.free(resIntEner)
+	c.free(resDumRho)
+	c.free(resDumRhou)
+	c.free(resDumRhov)
+	c.free(resDumEner)
+	c.free(resTotRho)
+	c.free(resTotRhou)
+	c.free(resTotRhov)
+	c.free(resTotEner)
 end
 
 task Euler2DPredictorWrapper(p_space : int8, Np : uint64, Nt : uint64, nSpaceInt : uint64, nTimeInt : uint64, dt : double, tolSolAderRho : double, tolSolAderRhouRhov : double, tolSolAderEner : double, MSpace : region(ispace(int1d), doubleVal), DrSpaceInt : region(ispace(int1d), doubleVal), DsSpaceInt : region(ispace(int1d), doubleVal), wSpaceInt : region(ispace(int1d), doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d), doubleVal), lFirst : region(ispace(int1d), doubleVal), wTimeInt : region(ispace(int1d), doubleVal), DOFToIntTime : region(ispace(int1d), doubleVal), AderIterMat : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal), q : region(ispace(ptr), Elem), qHalo : region(ispace(ptr),Elem), QMFace : region(ispace(ptr),Surface), QPFace : region(ispace(ptr),Surface))
@@ -1540,6 +1590,24 @@ do
 			end
 		end
 	end
+
+	-- Free buffers
+	c.free(preSolRho)
+	c.free(preSolRhou)
+	c.free(preSolRhov)
+	c.free(preSolEner)
+	c.free(preSolRhoTemp)
+	c.free(preSolRhouTemp)
+	c.free(preSolRhovTemp)
+	c.free(preSolEnerTemp)
+	c.free(solIntRho)
+	c.free(solIntRhou)
+	c.free(solIntRhov)
+	c.free(solIntEner)
+	c.free(solIntRhoTemp) 
+	c.free(solIntRhouTemp)
+	c.free(solIntRhovTemp)
+	c.free(solIntEnerTemp)
 end
 
 terra Euler2DFluxes(Np : uint64, F1 : &double, F2 : &double, F3 : &double, F4 : &double, G1 : &double, G2 : &double, G3 : &double, G4 : &double, intSolRho : &double, intSolRhou : &double, intSolRhov : &double, intSolEner : &double)
@@ -1571,38 +1639,38 @@ task Euler2DLF(cellInd : uint64, p_space : int8, F1 : &double, F2 : &double, F3 
 	var maxVelTemp : double
 	var gamma	: double = 1.4
 	var Nfp		: uint64 = p_space+1 
-	var maxVel	: double[30]	-- Nfaces*Nfp, Ps=9
-	var rhoM	: double[30]	-- Nfaces*Nfp
-	var rhouM	: double[30]	-- Nfaces*Nfp
-	var rhovM	: double[30]	-- Nfaces*Nfp
-	var enerM	: double[30]	-- Nfaces*Nfp
-	var uM		: double[30]	-- Nfaces*Nfp
-	var vM		: double[30]	-- Nfaces*Nfp
-	var pM		: double[30]	-- Nfaces*Nfp
-    var rhoP    : double[30]	-- Nfaces*Nfp
-    var rhouP   : double[30]	-- Nfaces*Nfp
-    var rhovP   : double[30]	-- Nfaces*Nfp
-    var enerP   : double[30]	-- Nfaces*Nfp
-	var uP		: double[30]	-- Nfaces*Nfp
-	var vP		: double[30]	-- Nfaces*Nfp
-	var pP		: double[30]	-- Nfaces*Nfp
+	var maxVel	: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp, Ps=9
+	var rhoM	: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var rhouM	: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var rhovM	: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var enerM	: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var uM		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var vM		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var pM		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var rhoP    : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var rhouP   : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var rhovP   : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var enerP   : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var uP		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var vP		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+	var pP		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
 
-	var F1M		: double[30]	-- Nfaces*Nfp
-    var F2M		: double[30]	-- Nfaces*Nfp
-    var F3M		: double[30]	-- Nfaces*Nfp
-    var F4M		: double[30]	-- Nfaces*Nfp
-    var G1M		: double[30]	-- Nfaces*Nfp
-    var G2M		: double[30]	-- Nfaces*Nfp
-    var G3M		: double[30]	-- Nfaces*Nfp
-    var G4M		: double[30]	-- Nfaces*Nfp
-    var F1P     : double[30]	-- Nfaces*Nfp
-    var F2P     : double[30]	-- Nfaces*Nfp
-    var F3P     : double[30]	-- Nfaces*Nfp
-    var F4P     : double[30]	-- Nfaces*Nfp
-    var G1P     : double[30]	-- Nfaces*Nfp
-    var G2P     : double[30]	-- Nfaces*Nfp
-    var G3P     : double[30]	-- Nfaces*Nfp
-    var G4P     : double[30]	-- Nfaces*Nfp
+	var F1M		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var F2M		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var F3M		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var F4M		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var G1M		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var G2M		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var G3M		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var G4M		: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var F1P     : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var F2P     : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var F3P     : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var F4P     : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var G1P     : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var G2P     : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var G3P     : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
+    var G4P     : &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))	-- Nfaces*Nfp
 
 	for ii=0,3*Nfp do
 		rhoM[ii]  = QMRho[ii]
@@ -1645,6 +1713,39 @@ task Euler2DLF(cellInd : uint64, p_space : int8, F1 : &double, F2 : &double, F3 
 		F3[ii] = 0.5*( nx[ii]*(F3P[ii]+F3M[ii]) + ny[ii]*(G3P[ii]+G3M[ii]) + maxVel[ii]*(rhovM[ii]-rhovP[ii]))
 		F4[ii] = 0.5*( nx[ii]*(F4P[ii]+F4M[ii]) + ny[ii]*(G4P[ii]+G4M[ii]) + maxVel[ii]*(enerM[ii]-enerP[ii]))
 	end
+
+	-- Free buffers
+	c.free(maxVel)
+	c.free(rhoM)
+	c.free(rhouM)
+	c.free(rhovM)
+	c.free(enerM)
+	c.free(uM)
+	c.free(vM)
+	c.free(pM)
+    c.free(rhoP)
+    c.free(rhouP)
+    c.free(rhovP)
+    c.free(enerP)
+	c.free(uP)
+	c.free(vP)
+	c.free(pP)
+	c.free(F1M)
+    c.free(F2M)
+    c.free(F3M)
+    c.free(F4M)
+    c.free(G1M)
+    c.free(G2M)
+    c.free(G3M)
+    c.free(G4M)
+    c.free(F1P)
+    c.free(F2P)
+    c.free(F3P)
+    c.free(F4P)
+    c.free(G1P)
+    c.free(G2P)
+    c.free(G3P)
+    c.free(G4P)
 end
 
 task Euler2DCorrector(p_space : int8, Np : uint64, Nt : uint64, nTimeInt : uint64, Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), q : region(ispace(ptr),Elem), QMFace : region(ispace(ptr),Surface), QPFace : region(ispace(ptr),Surface))
@@ -1652,36 +1753,36 @@ where
 	reads(Drw.v, Dsw.v, LIFT.v, wTimeInt.v, DOFToIntTime.v, q.cellInd, q.volRes, q.surfRes, q.preSol, q.rx, q.sx, q.ry, q.sy, q.nx, q.ny, q.Fscale, q.QPInfo, QMFace.rho, QMFace.rhou, QMFace.rhov, QMFace.ener, QPFace.rho, QPFace.rhou, QPFace.rhov, QPFace.ener),
 	writes(q.volRes, q.surfRes)
 do
-	var solIntRho		: double[55]		-- Np, Ps=9
-	var solIntRhou		: double[55]		-- Np
-	var solIntRhov		: double[55]		-- Np
-	var solIntEner		: double[55]		-- Np
-	var F1				: double[55]		-- Np
-	var F2				: double[55]		-- Np
-	var F3				: double[55]		-- Np
-	var F4				: double[55]		-- Np
-	var G1				: double[55]		-- Np
-	var G2				: double[55]		-- Np
-	var G3				: double[55]		-- Np
-	var G4				: double[55]		-- Np
-	var F1s				: double[30]		-- Nfaces*Nfp, Ps=9 
-	var F2s				: double[30]		-- Nfaces*Nfp
-	var F3s				: double[30]		-- Nfaces*Nfp
-	var F4s				: double[30]		-- Nfaces*Nfp
-	var QMRho			: double[30]		-- Nfaces*Nfp
-	var QMRhou			: double[30]		-- Nfaces*Nfp
-	var QMRhov			: double[30]		-- Nfaces*Nfp
-	var QMEner			: double[30]		-- Nfaces*Nfp
-	var QPRho			: double[30]		-- Nfaces*Nfp
-	var QPRhou			: double[30]		-- Nfaces*Nfp
-	var QPRhov			: double[30]		-- Nfaces*Nfp
-	var QPEner			: double[30]		-- Nfaces*Nfp
-	var dFdr			: double[55]		-- Np, Ps=9 
-	var dFds			: double[55]		-- Np
-	var dGdr			: double[55]		-- Np
-	var dGds			: double[55]		-- Np
 	var Nfp				: uint64 = p_space+1
 	var NfpSum			: uint64 = 3*Nfp 
+	var solIntRho		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np, Ps=9
+	var solIntRhou		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var solIntRhov		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var solIntEner		: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var F1				: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var F2				: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var F3				: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var F4				: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var G1				: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var G2				: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var G3				: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var G4				: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var F1s				: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp, Ps=9 
+	var F2s				: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var F3s				: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var F4s				: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var QMRho			: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var QMRhou			: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var QMRhov			: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var QMEner			: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var QPRho			: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var QPRhou			: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var QPRhov			: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var QPEner			: &double = [&double](c.malloc(3*Nfp*[terralib.sizeof(double)]))		-- Nfaces*Nfp
+	var dFdr			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np, Ps=9 
+	var dFds			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var dGdr			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
+	var dGds			: &double = [&double](c.malloc(Np*[terralib.sizeof(double)]))		-- Np
 	var gamma			: double = 1.4
 	var w				: double
 	var tempVal			: double
@@ -1821,6 +1922,36 @@ do
 			end
 		end
 	end
+
+	-- Free buffers
+	c.free(solIntRho)
+	c.free(solIntRhou)
+	c.free(solIntRhov)
+	c.free(solIntEner)
+	c.free(F1)
+	c.free(F2)
+	c.free(F3)
+	c.free(F4)
+	c.free(G1)
+	c.free(G2)
+	c.free(G3)
+	c.free(G4)
+	c.free(F1s)
+	c.free(F2s)
+	c.free(F3s)
+	c.free(F4s)
+	c.free(QMRho)
+	c.free(QMRhou)
+	c.free(QMRhov)
+	c.free(QMEner)
+	c.free(QPRho)
+	c.free(QPRhou)
+	c.free(QPRhov)
+	c.free(QPEner)
+	c.free(dFdr)
+	c.free(dFds)
+	c.free(dGdr)
+	c.free(dGds)
 end
 
 task Euler2DUpdateSolution(dt : double, Np : uint64, q : region(ispace(ptr),Elem))
