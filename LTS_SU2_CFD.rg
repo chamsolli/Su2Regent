@@ -713,7 +713,7 @@ do
 			xCenter = (gridVertex[gridEToV[cellNum].v1].VX + gridVertex[gridEToV[cellNum].v2].VX + gridVertex[gridEToV[cellNum].v3].VX)/3
 			yCenter = (gridVertex[gridEToV[cellNum].v1].VY + gridVertex[gridEToV[cellNum].v2].VY + gridVertex[gridEToV[cellNum].v3].VY)/3
 			if ( nTimeLev == 2 ) then
-				if ( pow(xCenter-5.0,2) + pow(yCenter-0.0,2) - 1.5*1.5 < 0 ) then
+				if ( pow(xCenter-5.0,2) + pow(yCenter-0.0,2) - 0.5*0.5 < 0 ) then
 					e.timeLev = [int1d](0)
 					e.factTimeLev = pow(2.0,1.0) -- 2^(nTimeLev-1-curTimeLev)
 					e.factTimeLevRev = pow(2,0)
@@ -735,6 +735,24 @@ do
 					e.timeLev = [int1d](2)
 					e.factTimeLev = pow(2.0,0.0) -- 2^(nTimeLev-1-curTimeLev)
 					e.factTimeLevRev = pow(2,2)
+				end
+			elseif ( nTimeLev == 4 ) then
+				if ( pow(xCenter-5.0,2) + pow(yCenter-0.0,2) - 0.5*0.5 < 0 ) then
+					e.timeLev = [int1d](0)
+					e.factTimeLev = pow(2.0,3.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,0)
+				elseif ( pow(xCenter-5.0,2) + pow(yCenter-0.0,2) - 1.5*1.5 < 0 ) then
+					e.timeLev = [int1d](1)
+					e.factTimeLev = pow(2.0,2.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,1)
+				elseif ( pow(xCenter-5.0,2) + pow(yCenter-0.0,2) - 2.5*2.5 < 0 ) then
+					e.timeLev = [int1d](2)
+					e.factTimeLev = pow(2.0,1.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,2)
+				else
+					e.timeLev = [int1d](3)
+					e.factTimeLev = pow(2.0,0.0) -- 2^(nTimeLev-1-curTimeLev)
+					e.factTimeLevRev = pow(2,3)
 				end
 			end
 		end
