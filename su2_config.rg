@@ -169,8 +169,6 @@ terra readConfigFile(configFileNameInput : &int8, self : &su2Config)
 end
 
 terra su2Config:initializeFromCommand()
-	var tsStart = c.legion_get_current_time_in_micros()
-
 	var configInputGiven = false
 	cstring.strcpy(self.configFileName,"default.cfg")
 	self.parallelism	= 1
@@ -238,8 +236,7 @@ terra su2Config:initializeFromCommand()
 		c.printf("Configuration file 'default.cfg' is missing!!!\n")
 		printUsageAndAbort()
 	end
-	var tsStop = c.legion_get_current_time_in_micros()
-	c.printf("\nRead configuration took %.4f sec\n\n", (tsStop-tsStart) * 1e-6)
+
 end
 
 return su2Config
