@@ -11,6 +11,7 @@ struct su2Config
 	p_space					: uint64,
 	p_time					: uint64,
 	nTimeLev				: uint64,
+	ltsPart					: uint64,
 	fluxTypeDG				: int8[16],
 	timeStepping			: int8[16],
 	CFL 					: double,
@@ -99,6 +100,10 @@ terra readConfigFile(configFileNameInput : &int8, self : &su2Config)
 			self.nTimeLev = [uint64](c.atoi(strIn3))
 			isOptionScanned = true
 		end
+		if cstring.strcmp(strIn1,"ltsPart") == 0 then
+			self.ltsPart = [uint64](c.atoi(strIn3))
+			isOptionScanned = true
+		end
 		if cstring.strcmp(strIn1,"CFL") == 0 then
 			self.CFL = c.atof(strIn3)
 			isOptionScanned = true
@@ -161,6 +166,11 @@ terra readConfigFile(configFileNameInput : &int8, self : &su2Config)
 	c.printf("p_space              = %llu\n",self.p_space)
 	c.printf("p_time               = %llu\n",self.p_time)
 	c.printf("nTimeLev             = %llu\n",self.nTimeLev)
+	if not ( self.ltsPart == 0 ) then
+		c.printf("use LTS partition    = Yes\n",self.nTimeLev)
+	else
+		c.printf("use LTS partition    = No \n",self.nTimeLev)
+	end
 	c.printf("CFL                  = %lf\n",self.CFL)
 	c.printf("fluxTypeDG           = %s\n",self.fluxTypeDG)
 	c.printf("timeStepping         = %s\n",self.timeStepping)
@@ -173,6 +183,7 @@ terra su2Config:initializeFromCommand()
 	cstring.strcpy(self.configFileName,"default.cfg")
 	self.parallelism	= 1
 	self.nTimeLev		= 1
+	self.ltsPart		= 0 
 	self.epsVal			= 5.0
 	self.rho0Val		= 1.0
 	self.u0Val			= 1.0
@@ -189,25 +200,25 @@ terra su2Config:initializeFromCommand()
 			self.parallelism = [uint64](c.atoi(args.argv[i]))
 			if not (self.parallelism == 1) then
 				if ( self.parallelism == 2 ) then
-					cstring.strcpy(self.partFileTail,"2.dat")
+					cstring.strcpy(self.partFileTail,"2")
 				elseif ( self.parallelism == 4 ) then
-					cstring.strcpy(self.partFileTail,"4.dat")
+					cstring.strcpy(self.partFileTail,"4")
 				elseif ( self.parallelism == 8 ) then
-					cstring.strcpy(self.partFileTail,"8.dat")
+					cstring.strcpy(self.partFileTail,"8")
 				elseif ( self.parallelism == 16 ) then
-					cstring.strcpy(self.partFileTail,"16.dat")
+					cstring.strcpy(self.partFileTail,"16")
 				elseif ( self.parallelism == 32 ) then
-					cstring.strcpy(self.partFileTail,"32.dat")
+					cstring.strcpy(self.partFileTail,"32")
 				elseif ( self.parallelism == 64 ) then
-					cstring.strcpy(self.partFileTail,"64.dat")
+					cstring.strcpy(self.partFileTail,"64")
 				elseif ( self.parallelism == 128 ) then
-					cstring.strcpy(self.partFileTail,"128.dat")
+					cstring.strcpy(self.partFileTail,"128")
 				elseif ( self.parallelism == 256 ) then
-					cstring.strcpy(self.partFileTail,"256.dat")
+					cstring.strcpy(self.partFileTail,"256")
 				elseif ( self.parallelism == 512 ) then
-					cstring.strcpy(self.partFileTail,"512.dat")
+					cstring.strcpy(self.partFileTail,"512")
 				elseif ( self.parallelism == 1024 ) then
-					cstring.strcpy(self.partFileTail,"1024.dat")
+					cstring.strcpy(self.partFileTail,"1024")
 				else
 					c.printf("Doesn't support given parallelism\n")
 					c.printf("Change parallelism values to 2, 4, 8, 16, 32, 64, 128, 256, 512 or 1024\n")
@@ -237,6 +248,26 @@ terra su2Config:initializeFromCommand()
 		printUsageAndAbort()
 	end
 
+    -- Determine partition file 
+	if not ( self.parallelism == 1 ) then
+		if ( self.ltsPart == 0 ) then
+			cstring.strcat(self.partFileTail,"LTS1.dat")
+		else
+			if ( self.nTimeLev == 1 ) then
+				cstring.strcat(self.partFileTail,"LTS1.dat")
+			elseif ( self.nTimeLev == 2 ) then
+				cstring.strcat(self.partFileTail,"LTS2.dat")
+			elseif ( self.nTimeLev == 3 ) then
+				cstring.strcat(self.partFileTail,"LTS3.dat")
+			elseif ( self.nTimeLev == 4 ) then
+				cstring.strcat(self.partFileTail,"LTS4.dat")
+			else
+				c.printf("Does not support nTimeLev larger than 4\n")
+				c.printf("TERMINATE THE PROGRAM..\n")
+				c.abort()
+			end
+		end
+	end
 end
 
 return su2Config
