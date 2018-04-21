@@ -323,7 +323,7 @@ terra readDoubleVal(f : &c.FILE, val : &double)
 	return c.fscanf(f,"%lf\n",&val[0]) == 1
 end
 
-task readStdElemSpaceInfo(fileName : &int8, MSpace : region(ispace(int1d),doubleVal), Dr : region(ispace(int1d),doubleVal), Ds : region(ispace(int1d),doubleVal), Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), DrSpaceInt : region(ispace(int1d),doubleVal), DsSpaceInt : region(ispace(int1d),doubleVal), wSpaceInt : region(ispace(int1d),doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal) )
+task readStdElemSpaceInfo(fileName : int8[64], MSpace : region(ispace(int1d),doubleVal), Dr : region(ispace(int1d),doubleVal), Ds : region(ispace(int1d),doubleVal), Drw : region(ispace(int1d),doubleVal), Dsw : region(ispace(int1d),doubleVal), LIFT : region(ispace(int1d),doubleVal), DrSpaceInt : region(ispace(int1d),doubleVal), DsSpaceInt : region(ispace(int1d),doubleVal), wSpaceInt : region(ispace(int1d),doubleVal), DOFToIntSpaceTranspose : region(ispace(int1d),doubleVal), vmapM : region(ispace(int1d),uintVal) )
 where
 	reads writes(MSpace.v, Dr.v, Ds.v, Drw.v, Dsw.v, LIFT.v, DrSpaceInt.v, DsSpaceInt.v, wSpaceInt.v, DOFToIntSpaceTranspose.v, vmapM.v)
 do
@@ -419,7 +419,7 @@ do
 	end
 end
 
-task readStdElemTimeInfo(fileName : &int8, lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), DOFToIntAdjTime : region(ispace(int1d),doubleVal))
+task readStdElemTimeInfo(fileName : int8[64], lFirst : region(ispace(int1d),doubleVal), wTimeInt : region(ispace(int1d),doubleVal), DOFToIntTime : region(ispace(int1d),doubleVal), DOFToIntAdjTime : region(ispace(int1d),doubleVal))
 where
 	reads writes(lFirst.v, wTimeInt.v, DOFToIntTime.v, DOFToIntAdjTime.v) 
 do
@@ -458,7 +458,7 @@ do
 	end
 end
 
-task readAderIterMatInfo(fileName : &int8, AderIterMat : region(ispace(int1d),doubleVal))
+task readAderIterMatInfo(fileName : int8[64], AderIterMat : region(ispace(int1d),doubleVal))
 where
 	reads writes(AderIterMat.v)
 do
@@ -479,7 +479,7 @@ do
 	end
 end
 
-task readVertex(meshFileName : &int8, gridVertex : region(ispace(ptr),GridVertex))
+task readVertex(meshFileName : int8[64], gridVertex : region(ispace(ptr),GridVertex))
 where
 	reads writes(gridVertex)
 do
@@ -508,7 +508,7 @@ do
 	c.fclose(f)
 end
 
-task readElemToVertex(meshFileName : &int8, gridNv : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)))
+task readElemToVertex(meshFileName : int8[64], gridNv : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)))
 where
 	reads writes(gridEToV)
 do
@@ -551,7 +551,7 @@ terra readData(f : &c.FILE, EVal : &uint64)
 	return c.fscanf(f, "%llu %llu %llu\n", &EVal[0],&EVal[1],&EVal[2]) == 3
 end
 
-task generateQPConnectivity(EToEFileName : &int8, EToFFileName : &int8, Nfp : uint64, q : region(ispace(ptr),Elem)) 
+task generateQPConnectivity(EToEFileName : int8[64], EToFFileName : int8[64], Nfp : uint64, q : region(ispace(ptr),Elem)) 
 where
 	reads writes(q.cellInd, q.QPInfo, q.adjQP, q.e1, q.e2, q.e3) 
 do
@@ -634,7 +634,7 @@ terra readColor(f : &c.FILE, colorInfo : &uint64)
 	return c.fscanf(f,"%llu %llu\n",&colorInfo[0],&colorInfo[1]) == 2
 end
 
-task colorElem(partFileName : &int8, parallelism : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)), q : region(ispace(ptr),Elem))
+task colorElem(partFileName : int8[64], parallelism : uint64, gridVertex : region(GridVertex), gridEToV : region(GridEToV(gridVertex)), q : region(ispace(ptr),Elem))
 where
 	reads writes(q.cellColor, gridEToV.cellColor)
 do
@@ -882,7 +882,7 @@ terra readFace(f : &c.FILE, faceInfoVal : &uint64)
 	return c.fscanf(f,"%llu %llu %llu %llu\n",&faceInfoVal[0],&faceInfoVal[1],&faceInfoVal[2],&faceInfoVal[3]) == 4
 end
 
-task readFaceInfo(faceFileName : &int8, face : region(ispace(ptr),surf))
+task readFaceInfo(faceFileName : int8[64], face : region(ispace(ptr),surf))
 where
 	reads writes(face.elem0, face.elem1, face.face0, face.face1, face.isDiffTimeLev, face.isElem1Halo, face.faceColorGraph, face.faceColorTime)
 do
