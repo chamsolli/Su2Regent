@@ -166,22 +166,22 @@ gridNvG, gridKG = readElemAndPoint(meshFileName)
 local EToEFileName
 local EToFFileName
 local partFileName
-if ( gridKG == 166 ) then
+if ( gridKG == 158 ) then
 	EToEFileName = "EToE009.dat" ; EToFFileName = "EToF009.dat";
 	partFileName = "grid009Part"
 elseif ( gridKG == 640 ) then
 	EToEFileName = "EToE017.dat" ; EToFFileName = "EToF017.dat";
 	partFileName = "grid017Part"
-elseif ( gridKG == 2454 ) then
+elseif ( gridKG == 2560 ) then
 	EToEFileName = "EToE033.dat" ; EToFFileName = "EToF033.dat";
 	partFileName = "grid033Part"
-elseif ( gridKG == 9638 ) then
+elseif ( gridKG == 10240 ) then
 	EToEFileName = "EToE065.dat" ; EToFFileName = "EToF065.dat";
 	partFileName = "grid065Part"
-elseif ( gridKG == 38428 ) then
+elseif ( gridKG == 40960 ) then
 	EToEFileName = "EToE129.dat" ; EToFFileName = "EToF129.dat";
 	partFileName = "grid129Part"
-elseif ( gridKG == 163426 ) then
+elseif ( gridKG == 163832 ) then
 	EToEFileName = "EToE257.dat" ; EToFFileName = "EToF257.dat";
 	partFileName = "grid257Part"
 elseif ( gridKG == 686300 ) then
